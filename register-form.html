@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แบบฟอร์มลงทะเบียน</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #ff7e3a 0%, #ff6b35 100%);
+            min-height: 100vh;
+        }
+
+        .form-container {
+            max-width: 500px;
+            animation: slideUp 0.5s ease-out;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .text-orange {
+            color: #ff6b35;
+        }
+
+        .btn-orange {
+            background: linear-gradient(135deg, #ff7e3a 0%, #ff6b35 100%);
+            border: none;
+        }
+
+        .btn-orange:hover {
+            background: linear-gradient(135deg, #ff8a4a 0%, #ff7b45 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .form-control,
+        .form-select {
+            padding: 12px 16px;
+            border: 2px solid #e8e8e8;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background-color: #f8f9fa;
+            font-size: 15px;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #ff6b35;
+            box-shadow: 0 0 0 0.25rem rgba(255, 107, 53, 0.15);
+            background-color: #ffffff;
+            transform: translateY(-1px);
+        }
+
+        .form-control:hover:not(:focus),
+        .form-select:hover:not(:focus) {
+            border-color: #ffb899;
+            background-color: #ffffff;
+        }
+
+        .form-control::placeholder {
+            color: #adb5bd;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body class="d-flex align-items-center py-4">
+    <div class="container">
+        <div class="form-container mx-auto bg-white rounded-4 shadow-lg p-4">
+            <!-- Logo -->
+            <div class="text-center mb-3">
+                <img src="owat-logo.png" alt="โอวาทเมท" class="img-fluid" style="max-width: 300px;">
+            </div>
+            
+            <!-- Header -->
+            <div class="text-center mb-4">
+                <h1 class="fw-bold text-orange fs-3 mb-2">แบบฟอร์มลงทะเบียน</h1>
+                <p class="text-muted small mb-0">กรุณากรอกข้อมูลให้ครบถ้วน</p>
+            </div>
+
+            <form id="registerForm" onsubmit="handleSubmit(event)">
+                <!-- รหัสหน่วยงานและชื่อหน่วยงาน -->
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label for="deptCode" class="form-label fw-semibold small">รหัสหน่วยงาน <span class="text-orange">*</span></label>
+                        <input type="text" class="form-control" id="deptCode" name="deptCode" placeholder="รหัส" required>
+                    </div>
+                    <div class="col-8">
+                        <label for="deptName" class="form-label fw-semibold small">ชื่อหน่วยงาน <span class="text-orange">*</span></label>
+                        <input type="text" class="form-control" id="deptName" name="deptName" placeholder="ชื่อหน่วยงาน" required>
+                    </div>
+                </div>
+
+                <!-- รหัสพนักงาน -->
+                <div class="mb-3">
+                    <label for="empCode" class="form-label fw-semibold small">รหัสพนักงาน <span class="text-orange">*</span></label>
+                    <input type="text" class="form-control" id="empCode" name="empCode" placeholder="กรอกรหัสพนักงาน" required>
+                </div>
+
+                <!-- คำนำหน้า -->
+                <div class="mb-3">
+                    <label for="prefix" class="form-label fw-semibold small">คำนำหน้า <span class="text-orange">*</span></label>
+                    <select class="form-select" id="prefix" name="prefix" required>
+                        <option value="" disabled selected>เลือกคำนำหน้า</option>
+                        <option value="นาย">นาย</option>
+                        <option value="นาง">นาง</option>
+                        <option value="นางสาว">นางสาว</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="Miss.">Miss.</option>
+                    </select>
+                </div>
+
+                <!-- ชื่อและนามสกุล -->
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label for="firstName" class="form-label fw-semibold small">ชื่อ <span class="text-orange">*</span></label>
+                        <input type="text" class="form-control" id="firstName" name="firstName" placeholder="ชื่อ" required>
+                    </div>
+                    <div class="col-8">
+                        <label for="lastName" class="form-label fw-semibold small">นามสกุล <span class="text-orange">*</span></label>
+                        <input type="text" class="form-control" id="lastName" name="lastName" placeholder="นามสกุล" required>
+                    </div>
+                </div>
+
+                <!-- เบอร์มือถือ -->
+                <div class="mb-3">
+                    <label for="mobile" class="form-label fw-semibold small">เบอร์มือถือ <span class="text-orange">*</span></label>
+                    <input type="tel" class="form-control" id="mobile" name="mobile" placeholder="0812345678" pattern="[0-9]{10}" maxlength="10" required>
+                </div>
+
+                <!-- LINE ID -->
+                <div class="mb-3">
+                    <label for="lineId" class="form-label fw-semibold small">LINE ID <span class="text-orange">*</span></label>
+                    <input type="text" class="form-control" id="lineId" name="lineId" placeholder="กรอก LINE ID ของคุณ" required>
+                    <small class="text-muted">กรุณากรอก LINE ID ที่ใช้ติดต่อ</small>
+                </div>
+
+                <!-- LINE User ID (Hidden) -->
+                <input type="hidden" id="lineUserId" name="lineUserId">
+
+                <!-- LINE Display Name (Hidden) -->
+                <input type="hidden" id="lineDisplayName" name="lineDisplayName">
+
+                <!-- Submit Button -->
+                <div class="d-grid gap-2 mt-4">
+                    <button type="submit" class="btn btn-orange btn-lg fw-semibold py-2 text-white">
+                        ยืนยันการลงทะเบียน
+                    </button>
+                </div>
+
+                <!-- Info Text -->
+                <p class="text-center text-muted small mt-3 mb-0">ข้อมูลของคุณจะถูกเก็บรักษาอย่างปลอดภัย</p>
+
+                <!-- Footer -->
+                <div class="text-center mt-4 pt-3 border-top">
+                    <p class="text-muted small mb-0">สงวนสิทธิ์สำหรับ <span class="text-orange fw-bold">บริษัทโอวาทเมท</span> เท่านั้น</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <script>
+        // LIFF ID - ต้องแทนที่ด้วย LIFF ID จริงหลังจากสร้างใน LINE Developers Console
+        const LIFF_ID = '2008428219-5lm0W9xl'; 
+        
+        // เริ่มต้น LIFF
+        window.onload = async function() {
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                
+                if (!liff.isLoggedIn()) {
+                    liff.login();
+                } else {
+                    // ดึงข้อมูลผู้ใช้ LINE
+                    const profile = await liff.getProfile();
+                    
+                    // แสดงข้อมูลใน console
+                    console.log('LINE Profile:', profile);
+                    
+                    // เติมข้อมูล LINE ลงในฟอร์ม (เฉพาะ hidden fields)
+                    document.getElementById('lineUserId').value = profile.userId;
+                    document.getElementById('lineDisplayName').value = profile.displayName;
+                    
+                    // แสดงข้อความต้อนรับ
+                    console.log('ยินดีต้อนรับ: ' + profile.displayName);
+                }
+            } catch (error) {
+                console.error('LIFF initialization failed:', error);
+                
+               
+            }
+        };
+
+        function handleSubmit(event) {
+            event.preventDefault();
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // แสดง loading
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึก...';
+            
+            // เก็บข้อมูลจากฟอร์ม
+            const formData = {
+                deptCode: document.getElementById('deptCode').value,
+                deptName: document.getElementById('deptName').value,
+                empCode: document.getElementById('empCode').value,
+                prefix: document.getElementById('prefix').value,
+                firstName: document.getElementById('firstName').value,
+                lastName: document.getElementById('lastName').value,
+                mobile: document.getElementById('mobile').value,
+                lineId: document.getElementById('lineId').value,
+                lineUserId: document.getElementById('lineUserId').value,
+                lineDisplayName: document.getElementById('lineDisplayName').value
+            };
+
+            // ส่งข้อมูลไปยัง API
+            fetch('https://bcd5a8c9da90.ngrok-free.app/api/register', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                
+                if (data.success) {
+                    alert('✅ ลงทะเบียนสำเร็จ!\n\n' + 
+                          'รหัสหน่วยงาน: ' + formData.deptCode + '\n' +
+                          'ชื่อหน่วยงาน: ' + formData.deptName + '\n' +
+                          'รหัสพนักงาน: ' + formData.empCode + '\n' +
+                          'ชื่อ-นามสกุล: ' + formData.prefix + formData.firstName + ' ' + formData.lastName + '\n' +
+                          'เบอร์มือถือ: ' + formData.mobile + '\n' +
+                          'LINE Display Name: ' + formData.lineDisplayName);
+                    
+                    // ล้างฟอร์ม
+                    document.getElementById('registerForm').reset();
+                    
+                    // ปิด LIFF window ถ้าเปิดใน LINE
+                    if (liff.isInClient()) {
+                        liff.closeWindow();
+                    }
+                } else {
+                    alert('❌ เกิดข้อผิดพลาด!\n\n' + data.message);
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                
+                console.error('Error:', error);
+                alert('❌ เกิดข้อผิดพลาดในการเชื่อมต่อ!\n\n' + error.message);
+            });
+        }
+
+        // Validate เบอร์โทรศัพท์ให้เป็นตัวเลขเท่านั้น
+        document.getElementById('mobile').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+    </script>
+</body>
+</html>
