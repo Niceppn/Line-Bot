@@ -237,11 +237,10 @@
             };
 
             // ส่งข้อมูลไปยัง API
-            fetch('https://bcd5a8c9da90.ngrok-free.app/api/register', {
+            fetch('http://146.190.82.178/api/register', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'ngrok-skip-browser-warning': 'true'
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(formData)
             })
