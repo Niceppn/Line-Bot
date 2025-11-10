@@ -26,12 +26,16 @@ PORT = 3001
 UPLOAD_DIR = "uploads"
 CHECKIN_DATA_FILE = "checkin_records.json"
 
-# LINE Bot credentials
-LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', "EHs9UYuvVMpF+asLjjaeXNr0ogBn1odOS0ehdVvHdrdFHTB6oAdh0C4y3escock9iu/VVYquwoCZRBtSgg/3+Nl9jEu8XIbUhObqkjoRiyCZc45s51PjGUt8bX9dX+Ca02ZZdBYy1TRndwrS4RzxdQdB04t89/1O/w1cDnyilFU=")
+# LINE Bot credentials - ใช้ Token เดียวกับระบบลงทะเบียน
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
+if not LINE_CHANNEL_ACCESS_TOKEN:
+    print("⚠️ Warning: LINE_CHANNEL_ACCESS_TOKEN not found in .env file")
+    print("   Messages will not be sent to LINE users")
+
 LINE_API_URL = "https://api.line.me/v2/bot/message/push"
 
-# MongoDB Configuration
-MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://niceppn:XCFyloY5PT1DSfOb@cluster0.ljo0j.mongodb.net/linebot_register?retryWrites=true&w=majority')
+# MongoDB Configuration - ใช้ MONGO_URI เดียวกับระบบลงทะเบียน
+MONGODB_URI = os.getenv('MONGO_URI', os.getenv('MONGODB_URI', 'mongodb+srv://niceppn:XCFyloY5PT1DSfOb@cluster0.ljo0j.mongodb.net/linebot_register?retryWrites=true&w=majority'))
 try:
     mongo_client = MongoClient(MONGODB_URI)
     db = mongo_client['linebot_register']
