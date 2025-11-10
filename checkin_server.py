@@ -15,6 +15,11 @@ import io
 import requests
 import urllib.parse
 from http import HTTPStatus
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Server Configuration
 PORT = 3001
@@ -22,33 +27,47 @@ UPLOAD_DIR = "uploads"
 CHECKIN_DATA_FILE = "checkin_records.json"
 
 # LINE Bot credentials
-LINE_CHANNEL_ACCESS_TOKEN = "EHs9UYuvVMpF+asLjjaeXNr0ogBn1odOS0ehdVvHdrdFHTB6oAdh0C4y3escock9iu/VVYquwoCZRBtSgg/3+Nl9jEu8XIbUhObqkjoRiyCZc45s51PjGUt8bX9dX+Ca02ZZdBYy1TRndwrS4RzxdQdB04t89/1O/w1cDnyilFU="
+LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN', "EHs9UYuvVMpF+asLjjaeXNr0ogBn1odOS0ehdVvHdrdFHTB6oAdh0C4y3escock9iu/VVYquwoCZRBtSgg/3+Nl9jEu8XIbUhObqkjoRiyCZc45s51PjGUt8bX9dX+Ca02ZZdBYy1TRndwrS4RzxdQdB04t89/1O/w1cDnyilFU=")
 LINE_API_URL = "https://api.line.me/v2/bot/message/push"
 
-# Mock Employee Database (สามารถเชื่อมต่อ MongoDB ได้ในภายหลัง)
-MOCK_EMPLOYEES = [
-    {
-        "employeeCode": "EMP001",
-        "name": "Nice Phutana",
-        "lineUserId": "U8a372477a988ebe17888a7ea3794b2c7",
-        "department": "IT",
-        "position": "Developer",
-        "status": "active"
-    },
-    {
-        "employeeCode": "EMP002",
-        "name": "Test Employee 2", 
-        "lineUserId": "U_TEST_USER_2",
-        "department": "HR",
-        "position": "Manager",
-        "status": "active"
-    }
-]
+# MongoDB Configuration
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://niceppn:XCFyloY5PT1DSfOb@cluster0.ljo0j.mongodb.net/linebot_register?retryWrites=true&w=majority')
+try:
+    mongo_client = MongoClient(MONGODB_URI)
+    db = mongo_client['linebot_register']
+    registrations_collection = db['registrations']
+    checkins_collection = db['checkins']
+    print("✅ Connected to MongoDB successfully")
+except Exception as e:
+    print(f"⚠️ MongoDB connection failed: {e}")
+    mongo_client = None
+    db = None
+    registrations_collection = None
+    checkins_collection = None
+
 
 # Create necessary directories
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
     print(f"📂 Created upload directory: {UPLOAD_DIR}")
+
+def get_employee_by_line_user_id(line_user_id):
+    """Get employee data from MongoDB by LINE User ID"""
+    if not registrations_collection:
+        print("⚠️ MongoDB not connected, cannot lookup employee")
+        return None
+    
+    try:
+        employee = registrations_collection.find_one({"lineUserId": line_user_id})
+        if employee:
+            print(f"✅ Found employee: {employee.get('firstName')} {employee.get('lastName')}")
+            return employee
+        else:
+            print(f"⚠️ No employee found for LINE User ID: {line_user_id}")
+            return None
+    except Exception as e:
+        print(f"❌ Error looking up employee: {e}")
+        return None
 
 def load_checkin_records():
     """Load check-in records from JSON file"""
@@ -362,8 +381,8 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                 thai_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
                 date_only = datetime.now().strftime("%Y-%m-%d")
                 
-                # Find employee by LINE user ID
-                employee = next((emp for emp in MOCK_EMPLOYEES if emp['lineUserId'] == user_id), None)
+                # Find employee by LINE user ID from MongoDB
+                employee = get_employee_by_line_user_id(user_id)
                 
                 # Prepare check-in record
                 checkin_record = {
@@ -400,10 +419,11 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     success_message += f"📡 ความแม่นยำ: {accuracy:.0f} เมตร\n\n"
                     success_message += f"📝 กรุณาติดต่อ HR เพื่อลงทะเบียน"
                 else:
-                    employee_code = employee.get('employeeCode')
-                    employee_name = employee.get('name', display_name)
-                    department = employee.get('department', 'N/A')
-                    position = employee.get('position', 'N/A')
+                    # Extract employee data from MongoDB
+                    employee_code = employee.get('empCode', 'N/A')
+                    employee_name = f"{employee.get('prefix', '')} {employee.get('firstName', '')} {employee.get('lastName', '')}".strip()
+                    department = employee.get('deptName', 'N/A')
+                    position = 'พนักงาน'  # MongoDB schema ไม่มี position field
                     
                     checkin_record.update({
                         "employeeCode": employee_code,
@@ -517,9 +537,19 @@ def main():
         print(f"   📄 Records file: {os.path.abspath(CHECKIN_DATA_FILE)}")
         print(f"   📊 Total records: {len(load_checkin_records())}")
         
-        print(f"\n👥 Mock Employees: {len(MOCK_EMPLOYEES)}")
-        for emp in MOCK_EMPLOYEES:
-            print(f"   - {emp['employeeCode']}: {emp['name']} ({emp['department']})")
+        print(f"\n� Database:")
+        if registrations_collection:
+            employee_count = registrations_collection.count_documents({})
+            print(f"   👥 Registered Employees: {employee_count}")
+            # Show first 3 employees
+            employees = list(registrations_collection.find().limit(3))
+            for emp in employees:
+                name = f"{emp.get('prefix', '')} {emp.get('firstName', '')} {emp.get('lastName', '')}".strip()
+                emp_code = emp.get('empCode', 'N/A')
+                dept = emp.get('deptName', 'N/A')
+                print(f"   - {emp_code}: {name} ({dept})")
+        else:
+            print(f"   ⚠️ MongoDB not connected")
         
         print(f"\n✅ Server is ready!")
         print(f"🔗 Access from: http://localhost:{PORT}/api/health")
