@@ -1,0 +1,12 @@
+# Check-In Server Dependencies
+# สำหรับระบบเช็คอิน พร้อมการอัปโหลดรูปภาพและ LINE integration
+
+# Image Processing
+Pillow==10.1.0
+
+# HTTP Requests for LINE API
+requests==2.31.0
+
+# Optional: For MongoDB integration (ถ้าต้องการเชื่อมต่อฐานข้อมูลจริง)
+# pymongo==4.6.0
+# python-dotenv==1.0.0
