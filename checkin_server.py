@@ -57,7 +57,7 @@ if not os.path.exists(UPLOAD_DIR):
 
 def get_employee_by_line_user_id(line_user_id):
     """Get employee data from MongoDB by LINE User ID"""
-    if not registrations_collection:
+    if registrations_collection is None:
         print("⚠️ MongoDB not connected, cannot lookup employee")
         return None
     
@@ -109,10 +109,27 @@ def add_watermark_to_image(image_data, latitude, longitude, address, timestamp):
         draw = ImageDraw.Draw(img)
         
         # Try to use a better font, fallback to default
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 24)
-            small_font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 18)
-        except:
+        # Support both Ubuntu and macOS font paths
+        font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",  # Ubuntu
+            "/System/Library/Fonts/Supplemental/Arial.ttf",  # macOS
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",  # Ubuntu alternative
+        ]
+        
+        font = None
+        small_font = None
+        
+        for font_path in font_paths:
+            try:
+                font = ImageFont.truetype(font_path, 24)
+                small_font = ImageFont.truetype(font_path, 18)
+                print(f"✅ Using font: {font_path}")
+                break
+            except:
+                continue
+        
+        if not font:
+            print("⚠️ Using default font (watermark may not display correctly)")
             font = ImageFont.load_default()
             small_font = ImageFont.load_default()
         
@@ -151,8 +168,19 @@ def add_watermark_to_image(image_data, latitude, longitude, address, timestamp):
 
 def send_line_message(user_id, messages):
     """Send message to LINE user"""
-    if not LINE_CHANNEL_ACCESS_TOKEN or not user_id:
-        print("⚠️ Missing LINE token or user ID")
+    print(f"\n{'='*60}")
+    print(f"📤 Attempting to send LINE message...")
+    print(f"   User ID: {user_id}")
+    print(f"   Messages count: {len(messages)}")
+    print(f"   Token available: {bool(LINE_CHANNEL_ACCESS_TOKEN)}")
+    
+    if not LINE_CHANNEL_ACCESS_TOKEN:
+        print("❌ LINE_CHANNEL_ACCESS_TOKEN is None or empty!")
+        print("   Check if .env file exists and contains LINE_CHANNEL_ACCESS_TOKEN")
+        return False
+    
+    if not user_id:
+        print("❌ User ID is missing!")
         return False
     
     headers = {
@@ -166,15 +194,26 @@ def send_line_message(user_id, messages):
     }
     
     try:
+        print(f"   Sending to LINE API...")
         response = requests.post(LINE_API_URL, headers=headers, json=data)
+        
+        print(f"   Response Status: {response.status_code}")
+        print(f"   Response Body: {response.text}")
+        
         if response.status_code == 200:
             print(f"✅ Message sent successfully to {user_id}")
+            print(f"{'='*60}\n")
             return True
         else:
-            print(f"❌ Failed to send message: {response.status_code} - {response.text}")
+            print(f"❌ Failed to send message: {response.status_code}")
+            print(f"   Error: {response.text}")
+            print(f"{'='*60}\n")
             return False
     except Exception as e:
         print(f"❌ Error sending LINE message: {e}")
+        import traceback
+        traceback.print_exc()
+        print(f"{'='*60}\n")
         return False
 
 class CheckInHandler(http.server.SimpleHTTPRequestHandler):
