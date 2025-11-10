@@ -537,8 +537,8 @@ def main():
         print(f"   📄 Records file: {os.path.abspath(CHECKIN_DATA_FILE)}")
         print(f"   📊 Total records: {len(load_checkin_records())}")
         
-        print(f"\n� Database:")
-        if registrations_collection:
+        print(f"\n🗄️ Database:")
+        if registrations_collection is not None:
             employee_count = registrations_collection.count_documents({})
             print(f"   👥 Registered Employees: {employee_count}")
             # Show first 3 employees
