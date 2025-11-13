@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory, abort
 from flask_cors import CORS
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from dotenv import load_dotenv
 import certifi
@@ -314,7 +314,10 @@ def send_personal_info(reply_token, user_id):
                 message_text += f"LINE: {reg.get('lineId', '')}\n"
                 
                 if 'createdAt' in reg:
-                    created_date = reg['createdAt'].strftime('%d/%m/%Y %H:%M')
+                    # แปลงเวลา UTC เป็นเวลาไทย (UTC+7)
+                    created_utc = reg['createdAt']
+                    created_thai = created_utc + timedelta(hours=7)
+                    created_date = created_thai.strftime('%d/%m/%Y %H:%M')
                     message_text += f"ลงทะเบียนเมื่อ: {created_date}"
                 
                 if idx < len(registrations):

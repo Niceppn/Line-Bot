@@ -99,7 +99,7 @@ def save_checkin_record(record):
         print(f"Error saving check-in record: {e}")
         return False
 
-def add_watermark_to_image(image_data, latitude, longitude, address, timestamp):
+def add_watermark_to_image(image_data, latitude, longitude, address, timestamp, employee_data=None):
     """Add watermark with GPS coordinates and timestamp to image"""
     try:
         # Open image
@@ -133,27 +133,57 @@ def add_watermark_to_image(image_data, latitude, longitude, address, timestamp):
             font = ImageFont.load_default()
             small_font = ImageFont.load_default()
         
-        # Format timestamp
-        thai_time = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).strftime("%d/%m/%Y %H:%M:%S")
+        # Format timestamp (Thailand time +7)
+        from datetime import timedelta
+        thai_time_dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00')) + timedelta(hours=7)
+        thai_time = thai_time_dt.strftime("%d/%m/%Y %H:%M:%S")
         
-        # Watermark text
-        watermark_lines = [
-            f"📍 GPS: {latitude:.6f}, {longitude:.6f}",
-            f"🕐 {thai_time}",
-            f"📌 {address[:50]}..."  # Truncate long addresses
-        ]
+        # Prepare watermark text
+        watermark_lines = []
+        
+        # Employee info (if available)
+        if employee_data:
+            emp_code = employee_data.get('empCode', 'N/A')
+            emp_name = f"{employee_data.get('firstName', '')} {employee_data.get('lastName', '')}".strip()
+            watermark_lines.append(f"� {emp_code} - {emp_name}")
+        
+        # Time and GPS
+        watermark_lines.append(f"🕐 {thai_time}")
+        watermark_lines.append(f"📍 {latitude:.6f}, {longitude:.6f}")
+        
+        # Address in English (remove Thai characters)
+        import re
+        # Keep only English characters, numbers, and common symbols
+        address_en = re.sub(r'[^\x00-\x7F]+', '', address)
+        if address_en.strip():
+            watermark_lines.append(f"📌 {address_en[:40]}")
         
         # Position watermark at bottom
         width, height = img.size
-        y_position = height - 120
+        line_height = 30
+        padding = 15
+        y_position = height - (len(watermark_lines) * line_height + padding * 2)
         
-        # Draw semi-transparent background
+        # Draw watermark with improved style
         for i, line in enumerate(watermark_lines):
-            # Draw black background for text
-            bbox = draw.textbbox((10, y_position + i * 35), line, font=small_font)
-            draw.rectangle(bbox, fill=(0, 0, 0, 180))
-            # Draw white text
-            draw.text((10, y_position + i * 35), line, fill=(255, 255, 255), font=small_font)
+            y = y_position + padding + (i * line_height)
+            
+            # Get text bounding box
+            bbox = draw.textbbox((padding, y), line, font=small_font)
+            
+            # Draw rounded rectangle background (simulate with multiple rectangles)
+            bg_padding = 8
+            draw.rectangle(
+                [bbox[0] - bg_padding, bbox[1] - bg_padding, 
+                 bbox[2] + bg_padding, bbox[3] + bg_padding],
+                fill=(0, 0, 0, 200)  # Semi-transparent black
+            )
+            
+            # Draw text with shadow effect
+            # Shadow
+            draw.text((padding + 1, y + 1), line, fill=(0, 0, 0), font=small_font)
+            # Main text in white
+            draw.text((padding, y), line, fill=(255, 255, 255), font=small_font)
         
         # Save to bytes
         output = io.BytesIO()
@@ -420,9 +450,11 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                 accuracy = data.get('accuracy', 0)
                 timestamp = data.get('timestamp', datetime.now().isoformat())
                 
-                # Get current time in Thai format
-                thai_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                date_only = datetime.now().strftime("%Y-%m-%d")
+                # Get current time in Thai format (UTC+7)
+                from datetime import timedelta
+                thai_time_dt = datetime.now() + timedelta(hours=7)
+                thai_time = thai_time_dt.strftime("%d/%m/%Y %H:%M:%S")
+                date_only = thai_time_dt.strftime("%Y-%m-%d")
                 
                 # Find employee by LINE user ID from MongoDB
                 employee = get_employee_by_line_user_id(user_id)

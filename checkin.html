@@ -55,6 +55,7 @@
       transform: scaleX(-1); /* Mirror effect for front camera */
       border: 3px solid #ff6b35;
       box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+      margin: 0 auto; /* จัดให้อยู่ตรงกลาง */
     }
     
     #canvas {
@@ -92,7 +93,7 @@
       height: auto;
       border-radius: 10px;
       display: none;
-      margin-top: 15px;
+      margin: 15px auto 0 auto; /* จัดให้อยู่ตรงกลาง */
       border: 3px solid #28a745;
       box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
     }
@@ -168,7 +169,7 @@
           // Use coordinates as fallback
         }
 
-        updateStatus('� กำลังเปิดกล้อง...');
+        updateStatus('กำลังเปิดกล้อง...');
 
         // Take photo
         const photoDataUrl = await takePhoto();
