@@ -167,6 +167,7 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                         
                         if saved_date == date_str and record_id and start_time:
                             end_time = current_time
+                            saved_shift = today_checkin.get('shift', '')
                             
                             # Calculate total time (endTime - startTime)
                             try:
@@ -182,11 +183,27 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                                 total_time = ""
                                 print(f"   ⚠️ Could not calculate total time")
                             
-                            # Prepare UPDATE payload (include startTime to preserve it)
+                            # Prepare FULL UPDATE payload (PUT API needs complete structure)
                             update_payload = {
-                                "startTime": start_time,
-                                "endTime": end_time,
-                                "totalTime": total_time
+                                "year": year,
+                                "employeeId": employee_code,
+                                "employeeName": employee_name,
+                                "month": month,
+                                "employee_record": [
+                                    {
+                                        "workplaceId": dept_code,
+                                        "workplaceName": dept_name,
+                                        "wGroup": "",
+                                        "date": day,
+                                        "shift": saved_shift,
+                                        "startTime": start_time,
+                                        "endTime": end_time,
+                                        "totalTime": total_time,
+                                        "startOtTime": "",
+                                        "endOtTime": "",
+                                        "totalOtTime": ""
+                                    }
+                                ]
                             }
                             
                             # Use PUT endpoint to UPDATE existing record
