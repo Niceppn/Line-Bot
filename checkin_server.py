@@ -611,13 +611,46 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     success_message += f"🏢 แผนก: {department}\n"
                     success_message += f"💼 ตำแหน่ง: {position}\n"
                     
-                    # Add HR verification status
-                    if hr_verified:
-                        success_message += f"✅ ยืนยันจากระบบ HR: สำเร็จ\n"
+                    # Add HR verification status and details
+                    if hr_verified and hr_data:
+                        success_message += f"\n✅ ยืนยันจากระบบ HR: สำเร็จ\n"
+                        success_message += f"━━━━━━━━━━━━━━━━━━━━\n"
+                        success_message += f"📋 ข้อมูลจากระบบ HR:\n"
+                        
+                        # ข้อมูลส่วนตัว
+                        if hr_data.get('prefix') or hr_data.get('name') or hr_data.get('lastName'):
+                            hr_name = f"{hr_data.get('prefix', '')} {hr_data.get('name', '')} {hr_data.get('lastName', '')}".strip()
+                            success_message += f"  ชื่อ-นามสกุล: {hr_name}\n"
+                        if hr_data.get('nickName'):
+                            success_message += f"  ชื่อเล่น: {hr_data.get('nickName')}\n"
+                        if hr_data.get('position'):
+                            success_message += f"  ตำแหน่ง: {hr_data.get('position')}\n"
+                        if hr_data.get('department'):
+                            success_message += f"  แผนก: {hr_data.get('department')}\n"
+                        if hr_data.get('workplace'):
+                            success_message += f"  สถานที่ทำงาน: {hr_data.get('workplace')}\n"
+                        if hr_data.get('jobtype'):
+                            success_message += f"  ประเภทงาน: {hr_data.get('jobtype')}\n"
+                        
+                        # วันที่เริ่มงาน
+                        if hr_data.get('startjob'):
+                            success_message += f"  วันเริ่มงาน: {hr_data.get('startjob')}\n"
+                        
+                        # เงินเดือน
+                        if hr_data.get('salary'):
+                            success_message += f"  เงินเดือน: {hr_data.get('salary')} บาท\n"
+                        
+                        # ข้อมูลติดต่อ
+                        if hr_data.get('phoneNumber'):
+                            success_message += f"  เบอร์โทร: {hr_data.get('phoneNumber')}\n"
+                        if hr_data.get('idLine'):
+                            success_message += f"  LINE ID: {hr_data.get('idLine')}\n"
+                        
+                        success_message += f"━━━━━━━━━━━━━━━━━━━━\n"
                     else:
-                        success_message += f"⚠️ ยืนยันจากระบบ HR: ไม่สำเร็จ\n"
+                        success_message += f"\n⚠️ ยืนยันจากระบบ HR: ไม่สำเร็จ\n"
                     
-                    success_message += f"📍 สถานที่: {address}\n"
+                    success_message += f"\n📍 สถานที่: {address}\n"
                     success_message += f"🕐 เวลา: {thai_time}\n"
                     success_message += f"📷 รูปถ่าย: {'✅ มี' if has_photo else '❌ ไม่มี'}\n"
                     success_message += f"🎯 GPS: {latitude:.6f}, {longitude:.6f}\n"
