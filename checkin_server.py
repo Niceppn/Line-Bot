@@ -268,12 +268,24 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
             print(f"✅ Time record created successfully")
             # Extract employeeRecordId from response
             response_data = response.json()
+            print(f"   📄 API Response: {json.dumps(response_data, ensure_ascii=False)}")
+            
             employee_record_id = None
             if response_data and 'result' in response_data:
+                print(f"   'result' found in response")
                 records = response_data['result'].get('employee_record', [])
+                print(f"   employee_record array length: {len(records) if records else 0}")
                 if records and len(records) > 0:
                     employee_record_id = records[0].get('_id')
-                    print(f"   Employee Record ID: {employee_record_id}")
+                    print(f"   ✅ Employee Record ID: {employee_record_id}")
+                else:
+                    print(f"   ⚠️ No employee_record found in result")
+            else:
+                print(f"   ⚠️ No 'result' field in response")
+            
+            if not employee_record_id:
+                print(f"   ⚠️ Could not extract Employee Record ID from response")
+            
             return employee_record_id
         else:
             print(f"⚠️ Time record API returned status {response.status_code}")
