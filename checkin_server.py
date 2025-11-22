@@ -271,17 +271,23 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
             print(f"   📄 API Response: {json.dumps(response_data, ensure_ascii=False)}")
             
             employee_record_id = None
-            if response_data and 'result' in response_data:
-                print(f"   'result' found in response")
+            
+            # Try to get from direct response structure (no 'result' wrapper)
+            if 'employee_record' in response_data:
+                records = response_data.get('employee_record', [])
+                print(f"   Found employee_record array, length: {len(records) if records else 0}")
+                if records and len(records) > 0:
+                    employee_record_id = records[0].get('_id')
+                    print(f"   ✅ Employee Record ID: {employee_record_id}")
+            
+            # Fallback: try with 'result' wrapper (in case API changes)
+            elif 'result' in response_data:
+                print(f"   Found 'result' wrapper")
                 records = response_data['result'].get('employee_record', [])
                 print(f"   employee_record array length: {len(records) if records else 0}")
                 if records and len(records) > 0:
                     employee_record_id = records[0].get('_id')
                     print(f"   ✅ Employee Record ID: {employee_record_id}")
-                else:
-                    print(f"   ⚠️ No employee_record found in result")
-            else:
-                print(f"   ⚠️ No 'result' field in response")
             
             if not employee_record_id:
                 print(f"   ⚠️ Could not extract Employee Record ID from response")
