@@ -156,12 +156,14 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                         
                         # Find record for current date
                         today_record = None
+                        record_id = None
                         for record in employee_records:
                             if record.get('date') == day:
                                 today_record = record
+                                record_id = record.get('_id')
                                 break
                         
-                        if today_record and today_record.get('startTime'):
+                        if today_record and record_id and today_record.get('startTime'):
                             start_time = today_record.get('startTime')
                             end_time = current_time
                             
@@ -179,28 +181,36 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                                 total_time = ""
                                 print(f"   ⚠️ Could not calculate total time")
                             
-                            # Update existing record with endTime and totalTime
-                            payload = {
-                                "year": year,
-                                "employeeId": employee_code,
-                                "employeeName": employee_name,
-                                "month": month,
-                                "employee_record": [
-                                    {
-                                        "workplaceId": dept_code,
-                                        "workplaceName": dept_name,
-                                        "wGroup": today_record.get('wGroup', ''),
-                                        "date": day,
-                                        "shift": shift or today_record.get('shift', ''),
-                                        "startTime": start_time,
-                                        "endTime": end_time,
-                                        "totalTime": total_time,
-                                        "startOtTime": today_record.get('startOtTime', ''),
-                                        "endOtTime": today_record.get('endOtTime', ''),
-                                        "totalOtTime": today_record.get('totalOtTime', '')
-                                    }
-                                ]
+                            # Prepare UPDATE payload (only the fields to update)
+                            update_payload = {
+                                "endTime": end_time,
+                                "totalTime": total_time
                             }
+                            
+                            # Use PUT endpoint to UPDATE existing record
+                            update_url = f"http://10.10.110.7:3000/timerecord/updatetimerecordemployee/{record_id}"
+                            print(f"📝 Updating time record {record_id}...")
+                            print(f"   Type: {checkin_type_text}")
+                            print(f"   API: {update_url}")
+                            print(f"   Date: {year}-{month}-{day}")
+                            print(f"   Start Time: {start_time}")
+                            print(f"   End Time: {end_time}")
+                            print(f"   Total Time: {total_time}")
+                            
+                            update_response = requests.put(
+                                update_url,
+                                json=update_payload,
+                                headers={'Content-Type': 'application/json'},
+                                timeout=10
+                            )
+                            
+                            if update_response.status_code == 200:
+                                print(f"✅ Time record updated successfully")
+                                return True
+                            else:
+                                print(f"⚠️ Update API returned status {update_response.status_code}")
+                                print(f"   Response: {update_response.text}")
+                                return False
                         else:
                             print(f"   ⚠️ No start time found for today - creating new record with end time only")
                             payload = {
