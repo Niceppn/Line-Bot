@@ -181,8 +181,9 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                                 total_time = ""
                                 print(f"   ⚠️ Could not calculate total time")
                             
-                            # Prepare UPDATE payload (only the fields to update)
+                            # Prepare UPDATE payload (include startTime to preserve it)
                             update_payload = {
+                                "startTime": start_time,
                                 "endTime": end_time,
                                 "totalTime": total_time
                             }
