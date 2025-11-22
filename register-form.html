@@ -162,6 +162,18 @@
                     <small class="text-muted">กรุณากรอก LINE ID ที่ใช้ติดต่อ</small>
                 </div>
 
+                <!-- รูปถ่าย -->
+                <div class="mb-3">
+                    <label for="photoUpload" class="form-label fw-semibold small">รูปถ่าย <span class="text-orange">*</span></label>
+                    <input type="file" class="form-control" id="photoUpload" name="photoUpload" accept="image/*" capture="user" required>
+                    <small class="text-muted">ถ่ายหรือเลือกรูปจากอัลบั้ม</small>
+                    
+                    <!-- Preview รูปภาพ -->
+                    <div id="imagePreview" class="mt-3 text-center" style="display: none;">
+                        <img id="previewImage" src="" alt="รูปตัวอย่าง" class="img-fluid rounded-3" style="max-width: 200px; max-height: 200px;">
+                    </div>
+                </div>
+
                 <!-- LINE User ID (Hidden) -->
                 <input type="hidden" id="lineUserId" name="lineUserId">
 
@@ -229,28 +241,30 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>กำลังบันทึก...';
             
-            // เตรียมข้อมูลสำหรับส่ง
-            const data = {
-                deptCode: document.getElementById('deptCode').value,
-                deptName: document.getElementById('deptName').value,
-                empCode: document.getElementById('empCode').value,
-                idCard: document.getElementById('idCard').value,
-                prefix: document.getElementById('prefix').value,
-                firstName: document.getElementById('firstName').value,
-                lastName: document.getElementById('lastName').value,
-                mobile: document.getElementById('mobile').value,
-                lineId: document.getElementById('lineId').value,
-                lineUserId: document.getElementById('lineUserId').value,
-                lineDisplayName: document.getElementById('lineDisplayName').value
-            };
+            // เตรียม FormData สำหรับส่งข้อมูลพร้อมไฟล์
+            const formData = new FormData();
+            formData.append('deptCode', document.getElementById('deptCode').value);
+            formData.append('deptName', document.getElementById('deptName').value);
+            formData.append('empCode', document.getElementById('empCode').value);
+            formData.append('idCard', document.getElementById('idCard').value);
+            formData.append('prefix', document.getElementById('prefix').value);
+            formData.append('firstName', document.getElementById('firstName').value);
+            formData.append('lastName', document.getElementById('lastName').value);
+            formData.append('mobile', document.getElementById('mobile').value);
+            formData.append('lineId', document.getElementById('lineId').value);
+            formData.append('lineUserId', document.getElementById('lineUserId').value);
+            formData.append('lineDisplayName', document.getElementById('lineDisplayName').value);
+            
+            // เพิ่มไฟล์รูปภาพ
+            const photoFile = document.getElementById('photoUpload').files[0];
+            if (photoFile) {
+                formData.append('photo', photoFile);
+            }
 
             // ส่งข้อมูลไปยัง API
             fetch('https://nice-ppn.studio/api/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
+                body: formData  // ส่ง FormData (ไม่ต้องใส่ Content-Type)
             })
             .then(response => response.json())
             .then(data => {
@@ -295,6 +309,19 @@
         // Validate เลขบัตรประชาชนให้เป็นตัวเลขเท่านั้น
         document.getElementById('idCard').addEventListener('input', function(e) {
             this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        // Preview รูปภาพ
+        document.getElementById('photoUpload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('previewImage').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
         });
     </script>
 </body>
