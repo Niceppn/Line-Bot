@@ -124,6 +124,65 @@ def verify_employee_code_with_hr_system(employee_code):
         print(f"⚠️ Error verifying with HR system: {e}")
         return None
 
+def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime):
+    """Create time record in HR system"""
+    try:
+        # Parse datetime
+        from datetime import datetime
+        dt = datetime.fromisoformat(checkin_datetime.replace('Z', '+00:00'))
+        
+        # Extract date components
+        year = str(dt.year)
+        month = str(dt.month)
+        day = str(dt.day)
+        start_time = f"{dt.hour:02d}.{dt.minute:02d}"
+        
+        # Prepare payload
+        payload = {
+            "year": year,
+            "employeeId": employee_code,
+            "employeeName": employee_name,
+            "month": month,
+            "employee_record": [
+                {
+                    "workplaceId": dept_code,
+                    "workplaceName": dept_name,
+                    "wGroup": "",
+                    "date": day,
+                    "shift": "",
+                    "startTime": start_time,
+                    "endTime": "",
+                    "totalTime": "",
+                    "startOtTime": "",
+                    "endOtTime": "",
+                    "totalOtTime": ""
+                }
+            ]
+        }
+        
+        print(f"📝 Creating time record for employee {employee_code}...")
+        print(f"   API: http://10.10.110.7:3000/timerecord/createtimerecordemployee")
+        print(f"   Date: {year}-{month}-{day}, Time: {start_time}")
+        
+        response = requests.post(
+            "http://10.10.110.7:3000/timerecord/createtimerecordemployee",
+            json=payload,
+            headers={'Content-Type': 'application/json'},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            print(f"✅ Time record created successfully")
+            return True
+        else:
+            print(f"⚠️ Time record API returned status {response.status_code}")
+            print(f"   Response: {response.text}")
+            return False
+            
+    except Exception as e:
+        print(f"⚠️ Error creating time record: {e}")
+        return False
+
 def get_employee_by_line_user_id(line_user_id):
     """Get employee data from MongoDB by LINE User ID"""
     if registrations_collection is None:
@@ -656,6 +715,11 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     success_message += f"🎯 GPS: {latitude:.6f}, {longitude:.6f}\n"
                     success_message += f"📡 ความแม่นยำ: {accuracy:.0f} เมตร\n"
                     success_message += f"💾 บันทึกข้อมูล: ✅ สำเร็จ"
+                    
+                    # Create time record in HR system (only for registered employees)
+                    if employee:
+                        dept_code = employee.get('deptCode', '')
+                        create_time_record(employee_code, employee_name, dept_code, department, timestamp)
                 
                 # Save check-in record
                 save_checkin_record(checkin_record)
