@@ -546,6 +546,9 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     hr_data = None
                     hr_verified = False
                     
+                    print(f"🔍 Debug: employee_code_from_request = {employee_code_from_request}")
+                    print(f"🔍 Debug: ENABLE_HR_VERIFICATION = {ENABLE_HR_VERIFICATION}")
+                    
                     if employee_code_from_request and ENABLE_HR_VERIFICATION:
                         print(f"🔍 Unregistered user provided employeeCode: {employee_code_from_request}")
                         hr_data = verify_employee_code_with_hr_system(employee_code_from_request)
