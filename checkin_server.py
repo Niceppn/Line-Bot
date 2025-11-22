@@ -147,6 +147,13 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                 # Get employee record from MongoDB to find today's employeeRecordId
                 if registrations_collection is not None:
                     employee = registrations_collection.find_one({"lineUserId": line_user_id})
+                    print(f"   Found employee in MongoDB: {employee is not None}")
+                    
+                    if employee:
+                        print(f"   Has todayCheckin field: {'todayCheckin' in employee}")
+                        if 'todayCheckin' in employee:
+                            print(f"   todayCheckin data: {employee.get('todayCheckin')}")
+                    
                     if employee and 'todayCheckin' in employee:
                         today_checkin = employee.get('todayCheckin', {})
                         saved_date = today_checkin.get('date')
@@ -829,7 +836,14 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                                 date_str = f"{check_dt.year}-{check_dt.month}-{check_dt.day}"
                                 start_time = f"{check_dt.hour:02d}.{check_dt.minute:02d}"
                                 
-                                registrations_collection.update_one(
+                                print(f"💾 Attempting to save check-in info...")
+                                print(f"   User ID: {user_id}")
+                                print(f"   Date: {date_str}")
+                                print(f"   Employee Record ID: {employee_record_id}")
+                                print(f"   Start Time: {start_time}")
+                                print(f"   Shift: {shift}")
+                                
+                                result = registrations_collection.update_one(
                                     {"lineUserId": user_id},
                                     {"$set": {
                                         "todayCheckin": {
@@ -840,7 +854,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                                         }
                                     }}
                                 )
-                                print(f"💾 Saved check-in info to MongoDB for check-out")
+                                print(f"💾 Saved check-in info to MongoDB (matched: {result.matched_count}, modified: {result.modified_count})")
                             except Exception as e:
                                 print(f"⚠️ Could not save check-in info: {e}")
                 
