@@ -26,6 +26,11 @@ PORT = 3001
 UPLOAD_DIR = "uploads"
 CHECKIN_DATA_FILE = "checkin_records.json"
 
+# HR System Configuration
+ENABLE_HR_VERIFICATION = os.getenv('ENABLE_HR_VERIFICATION', 'false').lower() == 'true'
+HR_API_URL = os.getenv('HR_API_URL', 'http://10.10.110.7:3000/employee/search')
+HR_API_TIMEOUT = int(os.getenv('HR_API_TIMEOUT', '5'))
+
 # LINE Bot credentials - ใช้ Token เดียวกับระบบลงทะเบียน
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv('LINE_CHANNEL_ACCESS_TOKEN')
 if not LINE_CHANNEL_ACCESS_TOKEN:
@@ -60,16 +65,21 @@ def verify_employee_code_with_hr_system(employee_code):
     if not employee_code:
         return None
     
-    hr_api_url = "http://10.10.110.7:3000/employee/search"
+    # Check if HR verification is enabled
+    if not ENABLE_HR_VERIFICATION:
+        print(f"ℹ️ HR verification is disabled (ENABLE_HR_VERIFICATION=false)")
+        return None
     
     try:
         print(f"🔍 Verifying employee code '{employee_code}' with HR system...")
+        print(f"   HR API URL: {HR_API_URL}")
+        print(f"   Timeout: {HR_API_TIMEOUT}s")
         
         response = requests.post(
-            hr_api_url,
+            HR_API_URL,
             json={"employeeId": employee_code},
             headers={'Content-Type': 'application/json'},
-            timeout=5  # 5 seconds timeout
+            timeout=HR_API_TIMEOUT
         )
         
         print(f"   HR API Response Status: {response.status_code}")
@@ -99,10 +109,10 @@ def verify_employee_code_with_hr_system(employee_code):
             return None
             
     except requests.exceptions.Timeout:
-        print(f"⚠️ HR API timeout - continuing without verification")
+        print(f"⚠️ HR API timeout ({HR_API_TIMEOUT}s) - continuing without verification")
         return None
     except requests.exceptions.ConnectionError:
-        print(f"⚠️ Cannot connect to HR API - continuing without verification")
+        print(f"⚠️ Cannot connect to HR API ({HR_API_URL}) - continuing without verification")
         return None
     except Exception as e:
         print(f"⚠️ Error verifying with HR system: {e}")
@@ -693,6 +703,14 @@ def main():
                 print(f"   - {emp_code}: {name} ({dept})")
         else:
             print(f"   ⚠️ MongoDB not connected")
+        
+        print(f"\n🔧 HR System Integration:")
+        print(f"   Enabled: {'✅ Yes' if ENABLE_HR_VERIFICATION else '❌ No (disabled)'}")
+        if ENABLE_HR_VERIFICATION:
+            print(f"   API URL: {HR_API_URL}")
+            print(f"   Timeout: {HR_API_TIMEOUT}s")
+        else:
+            print(f"   ℹ️ Set ENABLE_HR_VERIFICATION=true in .env to enable")
         
         print(f"\n✅ Server is ready!")
         print(f"🔗 Access from: http://localhost:{PORT}/api/health")
