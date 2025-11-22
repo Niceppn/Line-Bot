@@ -124,8 +124,8 @@ def verify_employee_code_with_hr_system(employee_code):
         print(f"⚠️ Error verifying with HR system: {e}")
         return None
 
-def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift="", checkin_type="in"):
-    """Create time record in HR system"""
+def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift="", checkin_type="in", line_user_id=None):
+    """Create or update time record in HR system"""
     try:
         # Parse datetime
         from datetime import datetime
@@ -136,39 +136,29 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
         month = str(dt.month)
         day = str(dt.day)
         current_time = f"{dt.hour:02d}.{dt.minute:02d}"
+        date_str = f"{year}-{month}-{day}"
         
         checkin_type_text = "เข้างาน" if checkin_type == "in" else "ออกงาน"
         
-        # If checking out, get existing record first
-        if checkin_type == "out":
-            print(f"🔍 Checking out - fetching existing record...")
+        # If checking out, get employeeRecordId from MongoDB
+        if checkin_type == "out" and line_user_id:
+            print(f"🔍 Checking out - looking for today's record in MongoDB...")
             try:
-                # Get existing time record for this employee/date
-                get_url = f"http://10.10.110.7:3000/timerecord/gettimerecordemployee/{employee_code}/{year}/{month}"
-                print(f"   GET URL: {get_url}")
-                get_response = requests.get(get_url, timeout=10)
-                print(f"   GET Response Status: {get_response.status_code}")
-                
-                if get_response.status_code == 200:
-                    existing_data = get_response.json()
-                    print(f"   GET Response Data: {existing_data}")
-
-                    
-                    # Find today's record
-                    if existing_data and 'result' in existing_data and len(existing_data['result']) > 0:
-                        employee_records = existing_data['result'][0].get('employee_record', [])
+                # Get employee record from MongoDB to find today's employeeRecordId
+                if registrations_collection:
+                    employee = registrations_collection.find_one({"lineUserId": line_user_id})
+                    if employee and 'todayCheckin' in employee:
+                        today_checkin = employee.get('todayCheckin', {})
+                        saved_date = today_checkin.get('date')
+                        record_id = today_checkin.get('employeeRecordId')
+                        start_time = today_checkin.get('startTime')
                         
-                        # Find record for current date
-                        today_record = None
-                        record_id = None
-                        for record in employee_records:
-                            if record.get('date') == day:
-                                today_record = record
-                                record_id = record.get('_id')
-                                break
+                        print(f"   Saved date: {saved_date}")
+                        print(f"   Current date: {date_str}")
+                        print(f"   Record ID: {record_id}")
+                        print(f"   Start Time: {start_time}")
                         
-                        if today_record and record_id and today_record.get('startTime'):
-                            start_time = today_record.get('startTime')
+                        if saved_date == date_str and record_id and start_time:
                             end_time = current_time
                             
                             # Calculate total time (endTime - startTime)
@@ -197,7 +187,7 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                             print(f"📝 Updating time record {record_id}...")
                             print(f"   Type: {checkin_type_text}")
                             print(f"   API: {update_url}")
-                            print(f"   Date: {year}-{month}-{day}")
+                            print(f"   Date: {date_str}")
                             print(f"   Start Time: {start_time}")
                             print(f"   End Time: {end_time}")
                             print(f"   Total Time: {total_time}")
@@ -211,132 +201,46 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                             
                             if update_response.status_code == 200:
                                 print(f"✅ Time record updated successfully")
-                                return True
+                                # Clear today's check-in data after successful check-out
+                                registrations_collection.update_one(
+                                    {"lineUserId": line_user_id},
+                                    {"$unset": {"todayCheckin": ""}}
+                                )
+                                return record_id
                             else:
                                 print(f"⚠️ Update API returned status {update_response.status_code}")
                                 print(f"   Response: {update_response.text}")
-                                return False
+                                return None
                         else:
-                            print(f"   ⚠️ No start time found for today")
-                            print(f"   Today's record: {today_record}")
-                            print(f"   Record ID: {record_id}")
-                            print(f"   Creating new record with end time only")
-                            payload = {
-                                "year": year,
-                                "employeeId": employee_code,
-                                "employeeName": employee_name,
-                                "month": month,
-                                "employee_record": [
-                                    {
-                                        "workplaceId": dept_code,
-                                        "workplaceName": dept_name,
-                                        "wGroup": "",
-                                        "date": day,
-                                        "shift": shift,
-                                        "startTime": "",
-                                        "endTime": current_time,
-                                        "totalTime": "",
-                                        "startOtTime": "",
-                                        "endOtTime": "",
-                                        "totalOtTime": ""
-                                    }
-                                ]
-                            }
+                            print(f"   ⚠️ No matching check-in record found for today")
                     else:
-                        print(f"   ⚠️ No existing records found - creating new record")
-                        payload = {
-                            "year": year,
-                            "employeeId": employee_code,
-                            "employeeName": employee_name,
-                            "month": month,
-                            "employee_record": [
-                                {
-                                    "workplaceId": dept_code,
-                                    "workplaceName": dept_name,
-                                    "wGroup": "",
-                                    "date": day,
-                                    "shift": shift,
-                                    "startTime": "",
-                                    "endTime": current_time,
-                                    "totalTime": "",
-                                    "startOtTime": "",
-                                    "endOtTime": "",
-                                    "totalOtTime": ""
-                                }
-                            ]
-                        }
-                else:
-                    print(f"   ⚠️ Could not fetch existing record - Status: {get_response.status_code}")
-                    print(f"   Response: {get_response.text}")
-                    payload = {
-                        "year": year,
-                        "employeeId": employee_code,
-                        "employeeName": employee_name,
-                        "month": month,
-                        "employee_record": [
-                            {
-                                "workplaceId": dept_code,
-                                "workplaceName": dept_name,
-                                "wGroup": "",
-                                "date": day,
-                                "shift": shift,
-                                "startTime": "",
-                                "endTime": current_time,
-                                "totalTime": "",
-                                "startOtTime": "",
-                                "endOtTime": "",
-                                "totalOtTime": ""
-                            }
-                        ]
-                    }
+                        print(f"   ⚠️ No todayCheckin data found in MongoDB")
+                        
             except Exception as e:
-                print(f"   ❌ Exception fetching existing record: {type(e).__name__}")
-                print(f"   Error details: {str(e)}")
-                print(f"   Creating new record instead")
-                payload = {
-                    "year": year,
-                    "employeeId": employee_code,
-                    "employeeName": employee_name,
-                    "month": month,
-                    "employee_record": [
-                        {
-                            "workplaceId": dept_code,
-                            "workplaceName": dept_name,
-                            "wGroup": "",
-                            "date": day,
-                            "shift": shift,
-                            "startTime": "",
-                            "endTime": current_time,
-                            "totalTime": "",
-                            "startOtTime": "",
-                            "endOtTime": "",
-                            "totalOtTime": ""
-                        }
-                    ]
+                print(f"   ❌ Error looking up check-in record: {str(e)}")
+        
+        # If check-in or check-out without existing record, create new
+        payload = {
+            "year": year,
+            "employeeId": employee_code,
+            "employeeName": employee_name,
+            "month": month,
+            "employee_record": [
+                {
+                    "workplaceId": dept_code,
+                    "workplaceName": dept_name,
+                    "wGroup": "",
+                    "date": day,
+                    "shift": shift,
+                    "startTime": current_time if checkin_type == "in" else "",
+                    "endTime": current_time if checkin_type == "out" else "",
+                    "totalTime": "",
+                    "startOtTime": "",
+                    "endOtTime": "",
+                    "totalOtTime": ""
                 }
-        else:
-            # Check-in: Create new record with startTime
-            payload = {
-                "year": year,
-                "employeeId": employee_code,
-                "employeeName": employee_name,
-                "month": month,
-                "employee_record": [
-                    {
-                        "workplaceId": dept_code,
-                        "workplaceName": dept_name,
-                        "wGroup": "",
-                        "date": day,
-                        "shift": shift,
-                        "startTime": current_time,
-                        "endTime": "",
-                        "totalTime": "",
-                        "startOtTime": "",
-                        "endOtTime": "",
-                        "totalOtTime": ""
-                    }
-                ]
-            }
+            ]
+        }
         
         print(f"📝 Creating time record for employee {employee_code}...")
         print(f"   Type: {checkin_type_text}")
@@ -355,11 +259,19 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
         
         if response.status_code == 200:
             print(f"✅ Time record created successfully")
-            return True
+            # Extract employeeRecordId from response
+            response_data = response.json()
+            employee_record_id = None
+            if response_data and 'result' in response_data:
+                records = response_data['result'].get('employee_record', [])
+                if records and len(records) > 0:
+                    employee_record_id = records[0].get('_id')
+                    print(f"   Employee Record ID: {employee_record_id}")
+            return employee_record_id
         else:
             print(f"⚠️ Time record API returned status {response.status_code}")
             print(f"   Response: {response.text}")
-            return False
+            return None
             
     except Exception as e:
         print(f"⚠️ Error creating time record: {e}")
@@ -903,7 +815,34 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     # Create time record in HR system (only for registered employees)
                     if employee:
                         dept_code = employee.get('deptCode', '')
-                        create_time_record(employee_code, employee_name, dept_code, department, timestamp, shift, checkin_type)
+                        employee_record_id = create_time_record(
+                            employee_code, employee_name, dept_code, department, 
+                            timestamp, shift, checkin_type, user_id
+                        )
+                        
+                        # If check-in and got record ID, save it to MongoDB for later check-out
+                        if checkin_type == "in" and employee_record_id and registrations_collection:
+                            try:
+                                # Parse datetime for date
+                                from datetime import datetime as dt
+                                check_dt = dt.fromisoformat(timestamp.replace('Z', '+00:00'))
+                                date_str = f"{check_dt.year}-{check_dt.month}-{check_dt.day}"
+                                start_time = f"{check_dt.hour:02d}.{check_dt.minute:02d}"
+                                
+                                registrations_collection.update_one(
+                                    {"lineUserId": user_id},
+                                    {"$set": {
+                                        "todayCheckin": {
+                                            "date": date_str,
+                                            "employeeRecordId": employee_record_id,
+                                            "startTime": start_time,
+                                            "shift": shift
+                                        }
+                                    }}
+                                )
+                                print(f"💾 Saved check-in info to MongoDB for check-out")
+                            except Exception as e:
+                                print(f"⚠️ Could not save check-in info: {e}")
                 
                 # Save check-in record
                 save_checkin_record(checkin_record)
