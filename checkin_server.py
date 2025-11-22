@@ -145,7 +145,7 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
             print(f"🔍 Checking out - looking for today's record in MongoDB...")
             try:
                 # Get employee record from MongoDB to find today's employeeRecordId
-                if registrations_collection:
+                if registrations_collection is not None:
                     employee = registrations_collection.find_one({"lineUserId": line_user_id})
                     if employee and 'todayCheckin' in employee:
                         today_checkin = employee.get('todayCheckin', {})
@@ -821,7 +821,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                         )
                         
                         # If check-in and got record ID, save it to MongoDB for later check-out
-                        if checkin_type == "in" and employee_record_id and registrations_collection:
+                        if checkin_type == "in" and employee_record_id and registrations_collection is not None:
                             try:
                                 # Parse datetime for date
                                 from datetime import datetime as dt
