@@ -77,7 +77,7 @@ def verify_employee_code_with_hr_system(employee_code):
         
         response = requests.post(
             HR_API_URL,
-            json={"employeeId": employee_code},
+            json={"employeeCode": employee_code},
             headers={'Content-Type': 'application/json'},
             timeout=HR_API_TIMEOUT
         )
@@ -89,17 +89,18 @@ def verify_employee_code_with_hr_system(employee_code):
             print(f"   HR API Response: {json.dumps(hr_data, ensure_ascii=False, indent=2)}")
             
             # Check if employee exists in HR system
-            if hr_data and isinstance(hr_data, dict):
-                # Assuming HR API returns employee data or empty/error if not found
-                if hr_data.get('employeeId') or hr_data.get('data'):
+            if hr_data and isinstance(hr_data, list) and len(hr_data) > 0:
+                # HR API returns array of employees
+                print(f"✅ Employee verified in HR system (found {len(hr_data)} record(s))")
+                return hr_data[0]  # Return first match
+            elif hr_data and isinstance(hr_data, dict):
+                # HR API returns single employee object
+                if hr_data.get('employeeCode') or hr_data.get('employeeId') or hr_data.get('data'):
                     print(f"✅ Employee verified in HR system")
                     return hr_data
                 else:
                     print(f"⚠️ Employee not found in HR system")
                     return None
-            elif hr_data and isinstance(hr_data, list) and len(hr_data) > 0:
-                print(f"✅ Employee verified in HR system (list response)")
-                return hr_data[0]
             else:
                 print(f"⚠️ Employee not found in HR system (empty response)")
                 return None
