@@ -55,6 +55,59 @@ if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
     print(f"📂 Created upload directory: {UPLOAD_DIR}")
 
+def verify_employee_code_with_hr_system(employee_code):
+    """Verify employee code with HR API system"""
+    if not employee_code:
+        return None
+    
+    hr_api_url = "http://10.10.110.7:3000/employee/search"
+    
+    try:
+        print(f"🔍 Verifying employee code '{employee_code}' with HR system...")
+        
+        response = requests.post(
+            hr_api_url,
+            json={"employeeId": employee_code},
+            headers={'Content-Type': 'application/json'},
+            timeout=5  # 5 seconds timeout
+        )
+        
+        print(f"   HR API Response Status: {response.status_code}")
+        
+        if response.status_code == 200:
+            hr_data = response.json()
+            print(f"   HR API Response: {json.dumps(hr_data, ensure_ascii=False, indent=2)}")
+            
+            # Check if employee exists in HR system
+            if hr_data and isinstance(hr_data, dict):
+                # Assuming HR API returns employee data or empty/error if not found
+                if hr_data.get('employeeId') or hr_data.get('data'):
+                    print(f"✅ Employee verified in HR system")
+                    return hr_data
+                else:
+                    print(f"⚠️ Employee not found in HR system")
+                    return None
+            elif hr_data and isinstance(hr_data, list) and len(hr_data) > 0:
+                print(f"✅ Employee verified in HR system (list response)")
+                return hr_data[0]
+            else:
+                print(f"⚠️ Employee not found in HR system (empty response)")
+                return None
+        else:
+            print(f"❌ HR API returned error: {response.status_code}")
+            print(f"   Response: {response.text}")
+            return None
+            
+    except requests.exceptions.Timeout:
+        print(f"⚠️ HR API timeout - continuing without verification")
+        return None
+    except requests.exceptions.ConnectionError:
+        print(f"⚠️ Cannot connect to HR API - continuing without verification")
+        return None
+    except Exception as e:
+        print(f"⚠️ Error verifying with HR system: {e}")
+        return None
+
 def get_employee_by_line_user_id(line_user_id):
     """Get employee data from MongoDB by LINE User ID"""
     if registrations_collection is None:
@@ -482,7 +535,9 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                         "employeeName": display_name,
                         "department": None,
                         "position": None,
-                        "status": "unregistered"
+                        "status": "unregistered",
+                        "hrSystemVerified": False,
+                        "hrSystemData": None
                     })
                     
                     success_message = f"⚠️ เช็คอินสำเร็จ แต่ยังไม่ได้ลงทะเบียนพนักงาน!\n\n"
@@ -500,12 +555,18 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     department = employee.get('deptName', 'N/A')
                     position = 'พนักงาน'  # MongoDB schema ไม่มี position field
                     
+                    # Verify employee code with HR system
+                    hr_data = verify_employee_code_with_hr_system(employee_code)
+                    hr_verified = hr_data is not None
+                    
                     checkin_record.update({
                         "employeeCode": employee_code,
                         "employeeName": employee_name,
                         "department": department,
                         "position": position,
-                        "status": "registered"
+                        "status": "registered",
+                        "hrSystemVerified": hr_verified,
+                        "hrSystemData": hr_data
                     })
                     
                     # Create success message
@@ -514,6 +575,13 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     success_message += f"🆔 รหัสพนักงาน: {employee_code}\n"
                     success_message += f"🏢 แผนก: {department}\n"
                     success_message += f"💼 ตำแหน่ง: {position}\n"
+                    
+                    # Add HR verification status
+                    if hr_verified:
+                        success_message += f"✅ ยืนยันจากระบบ HR: สำเร็จ\n"
+                    else:
+                        success_message += f"⚠️ ยืนยันจากระบบ HR: ไม่สำเร็จ\n"
+                    
                     success_message += f"📍 สถานที่: {address}\n"
                     success_message += f"🕐 เวลา: {thai_time}\n"
                     success_message += f"📷 รูปถ่าย: {'✅ มี' if has_photo else '❌ ไม่มี'}\n"
