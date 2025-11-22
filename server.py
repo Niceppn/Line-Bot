@@ -40,14 +40,60 @@ def index():
 def serve_static(filename):
     return send_from_directory('.', filename)
 
+# Route สำหรับให้บริการรูป profile
+@app.route('/uploads/profiles/<path:filename>')
+def serve_profile_photo(filename):
+    upload_dir = 'uploads/profiles'
+    if os.path.exists(os.path.join(upload_dir, filename)):
+        return send_from_directory(upload_dir, filename)
+    else:
+        abort(404)
+
 # API สำหรับลงทะเบียน
 @app.route('/api/register', methods=['POST'])
 def register():
     try:
-        data = request.get_json()
+        # ตรวจสอบว่าเป็น multipart/form-data หรือ JSON
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # รับข้อมูลจาก form
+            data = {
+                'deptCode': request.form.get('deptCode'),
+                'deptName': request.form.get('deptName'),
+                'empCode': request.form.get('empCode'),
+                'idCard': request.form.get('idCard'),
+                'prefix': request.form.get('prefix'),
+                'firstName': request.form.get('firstName'),
+                'lastName': request.form.get('lastName'),
+                'mobile': request.form.get('mobile'),
+                'lineId': request.form.get('lineId'),
+                'lineUserId': request.form.get('lineUserId', ''),
+                'lineDisplayName': request.form.get('lineDisplayName', '')
+            }
+            
+            # จัดการไฟล์รูปภาพ
+            photo_filename = None
+            if 'photo' in request.files:
+                photo = request.files['photo']
+                if photo and photo.filename:
+                    # สร้างชื่อไฟล์ใหม่
+                    ext = photo.filename.rsplit('.', 1)[1].lower() if '.' in photo.filename else 'jpg'
+                    photo_filename = f"profile_{data['empCode']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.{ext}"
+                    
+                    # สร้าง directory สำหรับเก็บรูป
+                    upload_dir = 'uploads/profiles'
+                    os.makedirs(upload_dir, exist_ok=True)
+                    
+                    # บันทึกไฟล์
+                    photo_path = os.path.join(upload_dir, photo_filename)
+                    photo.save(photo_path)
+                    print(f"📸 Saved profile photo: {photo_filename}")
+        else:
+            # รับข้อมูลแบบ JSON (backward compatibility)
+            data = request.get_json()
+            photo_filename = None
         
         # ตรวจสอบข้อมูลที่จำเป็น
-        required_fields = ['deptCode', 'deptName', 'empCode', 'prefix', 'firstName', 'lastName', 'mobile', 'lineId']
+        required_fields = ['deptCode', 'deptName', 'empCode', 'idCard', 'prefix', 'firstName', 'lastName', 'mobile', 'lineId']
         for field in required_fields:
             if field not in data or not data[field]:
                 return jsonify({
@@ -78,6 +124,7 @@ def register():
             'deptCode': data['deptCode'],
             'deptName': data['deptName'],
             'empCode': data['empCode'],
+            'idCard': data['idCard'],
             'prefix': data['prefix'],
             'firstName': data['firstName'],
             'lastName': data['lastName'],
@@ -85,6 +132,7 @@ def register():
             'lineId': data['lineId'],
             'lineUserId': data.get('lineUserId', ''),  # LINE User ID
             'lineDisplayName': data.get('lineDisplayName', ''),  # LINE Display Name
+            'photoFilename': photo_filename,  # ชื่อไฟล์รูปภาพ
             'createdAt': datetime.now(),
             'status': 'active'
         }
