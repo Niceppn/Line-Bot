@@ -540,18 +540,37 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                 if not employee:
                     print(f"⚠️ Employee not found for LINE user ID: {user_id}")
                     
+                    # Try to verify with HR system if employeeCode was provided in request
+                    employee_code_from_request = data.get('employeeCode')
+                    hr_data = None
+                    hr_verified = False
+                    
+                    if employee_code_from_request and ENABLE_HR_VERIFICATION:
+                        print(f"🔍 Unregistered user provided employeeCode: {employee_code_from_request}")
+                        hr_data = verify_employee_code_with_hr_system(employee_code_from_request)
+                        hr_verified = hr_data is not None
+                    
                     checkin_record.update({
-                        "employeeCode": None,
+                        "employeeCode": employee_code_from_request,
                         "employeeName": display_name,
                         "department": None,
                         "position": None,
                         "status": "unregistered",
-                        "hrSystemVerified": False,
-                        "hrSystemData": None
+                        "hrSystemVerified": hr_verified,
+                        "hrSystemData": hr_data
                     })
                     
                     success_message = f"⚠️ เช็คอินสำเร็จ แต่ยังไม่ได้ลงทะเบียนพนักงาน!\n\n"
                     success_message += f"👤 ชื่อ: {display_name}\n"
+                    
+                    # Show HR verification status if employeeCode was provided
+                    if employee_code_from_request:
+                        success_message += f"🆔 รหัสพนักงาน: {employee_code_from_request}\n"
+                        if hr_verified:
+                            success_message += f"✅ ยืนยันจากระบบ HR: สำเร็จ\n"
+                        else:
+                            success_message += f"⚠️ ยืนยันจากระบบ HR: ไม่สำเร็จ\n"
+                    
                     success_message += f"📍 ตำแหน่ง: {address}\n"
                     success_message += f"🕐 เวลา: {thai_time}\n"
                     success_message += f"📷 รูปถ่าย: {'✅ มี' if has_photo else '❌ ไม่มี'}\n"
