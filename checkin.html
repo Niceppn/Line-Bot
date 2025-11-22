@@ -118,6 +118,53 @@
       border-color: #ff8a4a;
       box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
     }
+    
+    .checkin-type-container {
+      display: none;
+      margin: 15px auto;
+      max-width: 300px;
+    }
+    
+    .checkin-type-options {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+    }
+    
+    .checkin-type-option {
+      flex: 1;
+    }
+    
+    .checkin-type-option input[type="radio"] {
+      display: none;
+    }
+    
+    .checkin-type-option label {
+      display: block;
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 2px solid #ff6b35;
+      background: white;
+      color: #495057;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+    }
+    
+    .checkin-type-option input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, #ff7e3a 0%, #ff6b35 100%);
+      color: white;
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+    }
+    
+    .checkin-type-option label:hover {
+      border-color: #ff8a4a;
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -125,6 +172,19 @@
     <h2 style="color: #ff6b35; margin-bottom: 10px;">📍 เช็คอิน + ถ่ายรูป</h2>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Check-In with Location & Photo</p>
     <div id="status" class="status">🔄 กำลังเริ่มต้น...</div>
+    
+    <div id="checkinTypeContainer" class="checkin-type-container">
+      <div class="checkin-type-options">
+        <div class="checkin-type-option">
+          <input type="radio" id="checkinIn" name="checkinType" value="in">
+          <label for="checkinIn">🔵 เข้างาน</label>
+        </div>
+        <div class="checkin-type-option">
+          <input type="radio" id="checkinOut" name="checkinType" value="out">
+          <label for="checkinOut">🔴 ออกงาน</label>
+        </div>
+      </div>
+    </div>
     
     <select id="shiftSelector">
       <option value="">เลือกกะทำงาน</option>
@@ -196,6 +256,24 @@
           console.warn('Reverse geocoding failed:', e);
           // Use coordinates as fallback
         }
+
+        updateStatus('📋 กรุณาเลือกประเภทการเช็คอิน...');
+        
+        // Show check-in type selector and wait for selection
+        const checkinTypeContainer = document.getElementById('checkinTypeContainer');
+        checkinTypeContainer.style.display = 'block';
+        
+        const checkinType = await new Promise((resolve) => {
+          const radios = document.querySelectorAll('input[name="checkinType"]');
+          radios.forEach(radio => {
+            radio.addEventListener('change', function handler(e) {
+              radios.forEach(r => r.removeEventListener('change', handler));
+              resolve(e.target.value);
+            });
+          });
+        });
+        
+        checkinTypeContainer.style.display = 'none';
 
         updateStatus('⏰ กรุณาเลือกกะทำงาน...');
         
@@ -276,10 +354,11 @@
               timestamp: new Date().toISOString(),
               source: 'liff-gps-photo',
               hasPhoto: !!photoDataUrl,
-              shift: selectedShift
+              shift: selectedShift,
+              checkinType: checkinType
             })
           });
-          console.log('Location with photo info and shift saved to API');
+          console.log('Location with photo info, shift, and check-in type saved to API');
         } catch (e) {
           console.warn('Failed to save to API:', e);
         }

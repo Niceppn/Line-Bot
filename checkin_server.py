@@ -124,7 +124,7 @@ def verify_employee_code_with_hr_system(employee_code):
         print(f"⚠️ Error verifying with HR system: {e}")
         return None
 
-def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift=""):
+def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift="", checkin_type="in"):
     """Create time record in HR system"""
     try:
         # Parse datetime
@@ -135,7 +135,18 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
         year = str(dt.year)
         month = str(dt.month)
         day = str(dt.day)
-        start_time = f"{dt.hour:02d}.{dt.minute:02d}"
+        current_time = f"{dt.hour:02d}.{dt.minute:02d}"
+        
+        # Determine which field to populate based on check-in type
+        start_time = current_time if checkin_type == "in" else ""
+        end_time = current_time if checkin_type == "out" else ""
+        total_time = ""
+        
+        # If checking out, try to calculate totalTime
+        if checkin_type == "out" and start_time == "":
+            # We need to get the start time from existing record
+            # For now, we'll leave it empty and let the backend handle it
+            print(f"⚠️ Check-out detected but no start time available for calculation")
         
         # Prepare payload
         payload = {
@@ -151,8 +162,8 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                     "date": day,
                     "shift": shift,
                     "startTime": start_time,
-                    "endTime": "",
-                    "totalTime": "",
+                    "endTime": end_time,
+                    "totalTime": total_time,
                     "startOtTime": "",
                     "endOtTime": "",
                     "totalOtTime": ""
@@ -160,9 +171,13 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
             ]
         }
         
+        checkin_type_text = "เข้างาน" if checkin_type == "in" else "ออกงาน"
         print(f"📝 Creating time record for employee {employee_code}...")
+        print(f"   Type: {checkin_type_text}")
         print(f"   API: http://10.10.110.7:3000/timerecord/createtimerecordemployee")
-        print(f"   Date: {year}-{month}-{day}, Time: {start_time}")
+        print(f"   Date: {year}-{month}-{day}")
+        print(f"   Start Time: {start_time if start_time else 'N/A'}")
+        print(f"   End Time: {end_time if end_time else 'N/A'}")
         
         response = requests.post(
             "http://10.10.110.7:3000/timerecord/createtimerecordemployee",
@@ -578,6 +593,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                 accuracy = data.get('accuracy', 0)
                 timestamp = data.get('timestamp', datetime.now().isoformat())
                 shift = data.get('shift', '')  # Get shift from request
+                checkin_type = data.get('checkinType', 'in')  # Get checkin type (in/out)
                 
                 # Get current time in Thai format (UTC+7)
                 from datetime import timedelta
@@ -720,7 +736,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     # Create time record in HR system (only for registered employees)
                     if employee:
                         dept_code = employee.get('deptCode', '')
-                        create_time_record(employee_code, employee_name, dept_code, department, timestamp, shift)
+                        create_time_record(employee_code, employee_name, dept_code, department, timestamp, shift, checkin_type)
                 
                 # Save check-in record
                 save_checkin_record(checkin_record)
