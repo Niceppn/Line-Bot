@@ -77,7 +77,7 @@ def verify_employee_code_with_hr_system(employee_code):
         
         response = requests.post(
             HR_API_URL,
-            json={"employeeCode": employee_code},
+            json={"employeeId": employee_code},
             headers={'Content-Type': 'application/json'},
             timeout=HR_API_TIMEOUT
         )
@@ -86,23 +86,28 @@ def verify_employee_code_with_hr_system(employee_code):
         
         if response.status_code == 200:
             hr_data = response.json()
-            print(f"   HR API Response: {json.dumps(hr_data, ensure_ascii=False, indent=2)}")
             
-            # Check if employee exists in HR system
-            if hr_data and isinstance(hr_data, list) and len(hr_data) > 0:
-                # HR API returns array of employees
-                print(f"✅ Employee verified in HR system (found {len(hr_data)} record(s))")
-                return hr_data[0]  # Return first match
-            elif hr_data and isinstance(hr_data, dict):
-                # HR API returns single employee object
-                if hr_data.get('employeeCode') or hr_data.get('employeeId') or hr_data.get('data'):
+            # HR API returns {"employees": [...]} format
+            if hr_data and isinstance(hr_data, dict) and 'employees' in hr_data:
+                employees_list = hr_data.get('employees', [])
+                print(f"   HR API returned {len(employees_list)} employee(s)")
+                
+                # Filter by employeeId matching our employee_code
+                matching_employee = None
+                for emp in employees_list:
+                    if str(emp.get('employeeId', '')) == str(employee_code):
+                        matching_employee = emp
+                        break
+                
+                if matching_employee:
                     print(f"✅ Employee verified in HR system")
-                    return hr_data
+                    print(f"   Found: {matching_employee.get('prefix', '')} {matching_employee.get('name', '')} {matching_employee.get('lastName', '')}")
+                    return matching_employee
                 else:
-                    print(f"⚠️ Employee not found in HR system")
+                    print(f"⚠️ Employee code '{employee_code}' not found in HR system")
                     return None
             else:
-                print(f"⚠️ Employee not found in HR system (empty response)")
+                print(f"⚠️ Unexpected HR API response format")
                 return None
         else:
             print(f"❌ HR API returned error: {response.status_code}")
@@ -545,9 +550,6 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     employee_code_from_request = data.get('employeeCode')
                     hr_data = None
                     hr_verified = False
-                    
-                    print(f"🔍 Debug: employee_code_from_request = {employee_code_from_request}")
-                    print(f"🔍 Debug: ENABLE_HR_VERIFICATION = {ENABLE_HR_VERIFICATION}")
                     
                     if employee_code_from_request and ENABLE_HR_VERIFICATION:
                         print(f"🔍 Unregistered user provided employeeCode: {employee_code_from_request}")
