@@ -356,37 +356,55 @@ def send_registration_card(user_id, registration_data):
         created_thai = created_utc + timedelta(hours=7)
         created_date = created_thai.strftime('%d/%m/%Y %H:%M')
         
-        flex_message = {
-            "type": "flex",
-            "altText": "✅ ลงทะเบียนสำเร็จ!",
-            "contents": {
-                "type": "bubble",
-                "size": "mega",
-                "header": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": "✅ ลงทะเบียนสำเร็จ",
-                            "color": "#FFFFFF",
-                            "size": "xl",
-                            "weight": "bold",
-                            "align": "center"
-                        },
-                        {
-                            "type": "text",
-                            "text": "ยินดีต้อนรับเข้าสู่ระบบ",
-                            "color": "#FFFFFF",
-                            "size": "sm",
-                            "align": "center",
-                            "margin": "md"
-                        }
-                    ],
-                    "backgroundColor": "#06C755",
-                    "paddingAll": "20px"
+        # URL รูปโปรไฟล์
+        photo_url = None
+        if registration_data.get('photoFilename'):
+            photo_url = f"https://nice-ppn.studio/uploads/profiles/{registration_data.get('photoFilename')}"
+        
+        # สร้าง Flex Message Content
+        bubble_content = {
+            "type": "bubble",
+            "size": "mega"
+        }
+        
+        # เพิ่มรูปถ้ามี
+        if photo_url:
+            bubble_content["hero"] = {
+                "type": "image",
+                "url": photo_url,
+                "size": "full",
+                "aspectRatio": "20:13",
+                "aspectMode": "cover"
+            }
+        
+        # Header
+        bubble_content["header"] = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "✅ ลงทะเบียนสำเร็จ",
+                    "color": "#FFFFFF",
+                    "size": "xl",
+                    "weight": "bold",
+                    "align": "center"
                 },
-                "body": {
+                {
+                    "type": "text",
+                    "text": "ยินดีต้อนรับเข้าสู่ระบบ",
+                    "color": "#FFFFFF",
+                    "size": "sm",
+                    "align": "center",
+                    "margin": "md"
+                }
+            ],
+            "backgroundColor": "#06C755",
+            "paddingAll": "20px"
+        }
+        
+        # Body
+        bubble_content["body"] = {
                     "type": "box",
                     "layout": "vertical",
                     "contents": [
@@ -558,23 +576,30 @@ def send_registration_card(user_id, registration_data):
                     ],
                     "spacing": "md",
                     "paddingAll": "20px"
-                },
-                "footer": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        {
-                            "type": "text",
-                            "text": "บริษัทโอวาทเมท",
-                            "size": "xs",
-                            "color": "#AAAAAA",
-                            "align": "center",
-                            "weight": "bold"
-                        }
-                    ],
-                    "paddingAll": "10px"
                 }
-            }
+        
+        # Footer
+        bubble_content["footer"] = {
+            "type": "box",
+            "layout": "vertical",
+            "contents": [
+                {
+                    "type": "text",
+                    "text": "บริษัทโอวาทเมท",
+                    "size": "xs",
+                    "color": "#AAAAAA",
+                    "align": "center",
+                    "weight": "bold"
+                }
+            ],
+            "paddingAll": "10px"
+        }
+        
+        # สร้าง Flex Message
+        flex_message = {
+            "type": "flex",
+            "altText": "✅ ลงทะเบียนสำเร็จ!",
+            "contents": bubble_content
         }
         
         # ส่งข้อความผ่าน LINE Push Message API
@@ -620,28 +645,272 @@ def send_personal_info(reply_token, user_id):
         print(f"📊 Found {len(registrations)} registration(s)")
         
         if not registrations:
-            message_text = "❌ ไม่พบข้อมูลการลงทะเบียนของคุณในระบบ\n\nกรุณาลงทะเบียนก่อนใช้งาน"
+            # ถ้าไม่พบข้อมูล ส่งข้อความแจ้งเตือน
+            message = {
+                'type': 'text',
+                'text': "❌ ไม่พบข้อมูลการลงทะเบียนของคุณในระบบ\n\nกรุณาลงทะเบียนก่อนใช้งาน"
+            }
         else:
-            # สร้างข้อความแสดงข้อมูล
-            message_text = f"ข้อมูลการลงทะเบียนของคุณ\n"
-            for idx, reg in enumerate(registrations, 1):
-                message_text += f"ชื่อ: {reg.get('prefix', '')} {reg.get('firstName', '')} {reg.get('lastName', '')}\n"
-                message_text += f"หน่วยงาน: {reg.get('deptName', '')} ({reg.get('deptCode', '')})\n"
-                message_text += f"รหัสพนักงาน: {reg.get('empCode', '')}\n"
-                message_text += f"เบอร์: {reg.get('mobile', '')}\n"
-                message_text += f"LINE: {reg.get('lineId', '')}\n"
-                
-                if 'createdAt' in reg:
-                    # แปลงเวลา UTC เป็นเวลาไทย (UTC+7)
-                    created_utc = reg['createdAt']
-                    created_thai = created_utc + timedelta(hours=7)
-                    created_date = created_thai.strftime('%d/%m/%Y %H:%M')
-                    message_text += f"ลงทะเบียนเมื่อ: {created_date}"
-                
-                if idx < len(registrations):
-                    message_text += "\n" + "─" * 23 + "\n\n"
+            # ส่ง Flex Message Card สำหรับข้อมูลแรก
+            reg = registrations[0]
+            
+            # สร้างข้อมูล
+            full_name = f"{reg.get('prefix', '')} {reg.get('firstName', '')} {reg.get('lastName', '')}"
+            
+            # แปลงเวลา UTC เป็นเวลาไทย (UTC+7)
+            if 'createdAt' in reg:
+                created_utc = reg['createdAt']
+                created_thai = created_utc + timedelta(hours=7)
+                created_date = created_thai.strftime('%d/%m/%Y %H:%M')
+            else:
+                created_date = '-'
+            
+            # URL รูปโปรไฟล์
+            photo_url = None
+            if reg.get('photoFilename'):
+                photo_url = f"https://nice-ppn.studio/uploads/profiles/{reg.get('photoFilename')}"
+            
+            # สร้าง Flex Message Content
+            bubble_content = {
+                "type": "bubble",
+                "size": "mega"
+            }
+            
+            # เพิ่มรูปถ้ามี
+            if photo_url:
+                bubble_content["hero"] = {
+                    "type": "image",
+                    "url": photo_url,
+                    "size": "full",
+                    "aspectRatio": "20:13",
+                    "aspectMode": "cover"
+                }
+            
+            # Header
+            bubble_content["header"] = {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "📋 ข้อมูลส่วนตัว",
+                        "color": "#FFFFFF",
+                        "size": "xl",
+                        "weight": "bold",
+                        "align": "center"
+                    },
+                    {
+                        "type": "text",
+                        "text": "ข้อมูลการลงทะเบียนของคุณ",
+                        "color": "#FFFFFF",
+                        "size": "sm",
+                        "align": "center",
+                        "margin": "md"
+                    }
+                ],
+                "backgroundColor": "#FF6B35",
+                "paddingAll": "20px"
+            }
+            
+            # Body
+            bubble_content["body"] = {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": "ข้อมูลการลงทะเบียน",
+                                "size": "lg",
+                                "weight": "bold",
+                                "color": "#FF6B35"
+                            }
+                        ],
+                        "margin": "none",
+                        "spacing": "none"
+                    },
+                    {
+                        "type": "separator",
+                        "margin": "lg"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "box",
+                                "layout": "baseline",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "ชื่อ-นามสกุล:",
+                                        "size": "sm",
+                                        "color": "#8C8C8C",
+                                        "flex": 0,
+                                        "weight": "bold"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": full_name,
+                                        "size": "sm",
+                                        "color": "#111111",
+                                        "flex": 0,
+                                        "margin": "md",
+                                        "wrap": True
+                                    }
+                                ],
+                                "spacing": "sm",
+                                "margin": "lg"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "baseline",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "หน่วยงาน:",
+                                        "size": "sm",
+                                        "color": "#8C8C8C",
+                                        "flex": 0,
+                                        "weight": "bold"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": f"{reg.get('deptName', '')} ({reg.get('deptCode', '')})",
+                                        "size": "sm",
+                                        "color": "#111111",
+                                        "flex": 0,
+                                        "margin": "md",
+                                        "wrap": True
+                                    }
+                                ],
+                                "spacing": "sm",
+                                "margin": "md"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "baseline",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "รหัสพนักงาน:",
+                                        "size": "sm",
+                                        "color": "#8C8C8C",
+                                        "flex": 0,
+                                        "weight": "bold"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": reg.get('empCode', ''),
+                                        "size": "sm",
+                                        "color": "#111111",
+                                        "flex": 0,
+                                        "margin": "md"
+                                    }
+                                ],
+                                "spacing": "sm",
+                                "margin": "md"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "baseline",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "เบอร์โทร:",
+                                        "size": "sm",
+                                        "color": "#8C8C8C",
+                                        "flex": 0,
+                                        "weight": "bold"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": reg.get('mobile', ''),
+                                        "size": "sm",
+                                        "color": "#111111",
+                                        "flex": 0,
+                                        "margin": "md"
+                                    }
+                                ],
+                                "spacing": "sm",
+                                "margin": "md"
+                            },
+                            {
+                                "type": "box",
+                                "layout": "baseline",
+                                "contents": [
+                                    {
+                                        "type": "text",
+                                        "text": "LINE ID:",
+                                        "size": "sm",
+                                        "color": "#8C8C8C",
+                                        "flex": 0,
+                                        "weight": "bold"
+                                    },
+                                    {
+                                        "type": "text",
+                                        "text": reg.get('lineId', ''),
+                                        "size": "sm",
+                                        "color": "#111111",
+                                        "flex": 0,
+                                        "margin": "md"
+                                    }
+                                ],
+                                "spacing": "sm",
+                                "margin": "md"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "separator",
+                        "margin": "lg"
+                    },
+                    {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                            {
+                                "type": "text",
+                                "text": f"ลงทะเบียนเมื่อ: {created_date}",
+                                "size": "xs",
+                                "color": "#AAAAAA",
+                                "align": "center"
+                            }
+                        ],
+                        "margin": "lg"
+                    }
+                ],
+                "spacing": "md",
+                "paddingAll": "20px"
+            }
+            
+            # Footer
+            bubble_content["footer"] = {
+                "type": "box",
+                "layout": "vertical",
+                "contents": [
+                    {
+                        "type": "text",
+                        "text": "บริษัทโอวาทเมท",
+                        "size": "xs",
+                        "color": "#AAAAAA",
+                        "align": "center",
+                        "weight": "bold"
+                    }
+                ],
+                "paddingAll": "10px"
+            }
+            
+            message = {
+                "type": "flex",
+                "altText": "📋 ข้อมูลส่วนตัว",
+                "contents": bubble_content
+            }
         
-        print(f"💬 Message to send: {message_text[:100]}...")
+        print(f"💬 Sending message...")
         
         # ส่งข้อความกลับผ่าน LINE Reply API
         if LINE_CHANNEL_ACCESS_TOKEN:
@@ -652,10 +921,7 @@ def send_personal_info(reply_token, user_id):
             
             payload = {
                 'replyToken': reply_token,
-                'messages': [{
-                    'type': 'text',
-                    'text': message_text
-                }]
+                'messages': [message]
             }
             
             print(f"📤 Sending to LINE API...")
