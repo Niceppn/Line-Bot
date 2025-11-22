@@ -127,16 +127,22 @@ def verify_employee_code_with_hr_system(employee_code):
 def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift="", checkin_type="in", line_user_id=None):
     """Create or update time record in HR system"""
     try:
-        # Parse datetime
-        from datetime import datetime
+        # Parse datetime and convert to Thai timezone (UTC+7)
+        from datetime import datetime, timedelta
         dt = datetime.fromisoformat(checkin_datetime.replace('Z', '+00:00'))
         
-        # Extract date components
-        year = str(dt.year)
-        month = str(dt.month)
-        day = str(dt.day)
-        current_time = f"{dt.hour:02d}.{dt.minute:02d}"
+        # Convert to Thai time (UTC+7)
+        thai_dt = dt + timedelta(hours=7)
+        
+        # Extract date components from Thai time
+        year = str(thai_dt.year)
+        month = str(thai_dt.month)
+        day = str(thai_dt.day)
+        current_time = f"{thai_dt.hour:02d}.{thai_dt.minute:02d}"
         date_str = f"{year}-{month}-{day}"
+        
+        print(f"   🕐 UTC Time: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"   🕐 Thai Time: {thai_dt.strftime('%Y-%m-%d %H:%M:%S')}")
         
         checkin_type_text = "เข้างาน" if checkin_type == "in" else "ออกงาน"
         
@@ -869,11 +875,12 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                         # If check-in and got record ID, save it to MongoDB for later check-out
                         if checkin_type == "in" and employee_record_id and registrations_collection is not None:
                             try:
-                                # Parse datetime for date
-                                from datetime import datetime as dt
+                                # Parse datetime for date and convert to Thai time
+                                from datetime import datetime as dt, timedelta
                                 check_dt = dt.fromisoformat(timestamp.replace('Z', '+00:00'))
-                                date_str = f"{check_dt.year}-{check_dt.month}-{check_dt.day}"
-                                start_time = f"{check_dt.hour:02d}.{check_dt.minute:02d}"
+                                thai_check_dt = check_dt + timedelta(hours=7)
+                                date_str = f"{thai_check_dt.year}-{thai_check_dt.month}-{thai_check_dt.day}"
+                                start_time = f"{thai_check_dt.hour:02d}.{thai_check_dt.minute:02d}"
                                 
                                 print(f"💾 Attempting to save check-in info...")
                                 print(f"   User ID: {user_id}")
