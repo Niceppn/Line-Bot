@@ -124,7 +124,7 @@ def verify_employee_code_with_hr_system(employee_code):
         print(f"⚠️ Error verifying with HR system: {e}")
         return None
 
-def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime):
+def create_time_record(employee_code, employee_name, dept_code, dept_name, checkin_datetime, shift=""):
     """Create time record in HR system"""
     try:
         # Parse datetime
@@ -149,7 +149,7 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                     "workplaceName": dept_name,
                     "wGroup": "",
                     "date": day,
-                    "shift": "",
+                    "shift": shift,
                     "startTime": start_time,
                     "endTime": "",
                     "totalTime": "",
@@ -577,6 +577,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                 has_photo = data.get('hasPhoto', False)
                 accuracy = data.get('accuracy', 0)
                 timestamp = data.get('timestamp', datetime.now().isoformat())
+                shift = data.get('shift', '')  # Get shift from request
                 
                 # Get current time in Thai format (UTC+7)
                 from datetime import timedelta
@@ -719,7 +720,7 @@ class CheckInHandler(http.server.SimpleHTTPRequestHandler):
                     # Create time record in HR system (only for registered employees)
                     if employee:
                         dept_code = employee.get('deptCode', '')
-                        create_time_record(employee_code, employee_name, dept_code, department, timestamp)
+                        create_time_record(employee_code, employee_name, dept_code, department, timestamp, shift)
                 
                 # Save check-in record
                 save_checkin_record(checkin_record)

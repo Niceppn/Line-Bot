@@ -97,6 +97,27 @@
       border: 3px solid #28a745;
       box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
     }
+    
+    #shiftSelector {
+      width: 100%;
+      max-width: 300px;
+      padding: 12px;
+      margin: 15px auto;
+      border-radius: 12px;
+      border: 2px solid #ff6b35;
+      font-size: 16px;
+      color: #495057;
+      background: white;
+      cursor: pointer;
+      display: none;
+      box-shadow: 0 4px 12px rgba(255, 107, 53, 0.2);
+    }
+    
+    #shiftSelector:focus {
+      outline: none;
+      border-color: #ff8a4a;
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2);
+    }
   </style>
 </head>
 <body>
@@ -104,6 +125,13 @@
     <h2 style="color: #ff6b35; margin-bottom: 10px;">📍 เช็คอิน + ถ่ายรูป</h2>
     <p style="color: #64748b; font-size: 14px; margin-bottom: 20px;">Check-In with Location & Photo</p>
     <div id="status" class="status">🔄 กำลังเริ่มต้น...</div>
+    
+    <select id="shiftSelector">
+      <option value="">เลือกกะทำงาน</option>
+      <option value="morning_shift">🌅 กะเช้า (Morning Shift)</option>
+      <option value="afternoon_shift">☀️ กะบ่าย (Afternoon Shift)</option>
+      <option value="night_shift">🌙 กะดึก (Night Shift)</option>
+    </select>
     
     <video id="video" autoplay playsinline></video>
     <button id="captureBtn">📷 ถ่ายรูป</button>
@@ -169,6 +197,23 @@
           // Use coordinates as fallback
         }
 
+        updateStatus('⏰ กรุณาเลือกกะทำงาน...');
+        
+        // Show shift selector and wait for selection
+        const shiftSelector = document.getElementById('shiftSelector');
+        shiftSelector.style.display = 'block';
+        
+        const selectedShift = await new Promise((resolve) => {
+          shiftSelector.addEventListener('change', function handler(e) {
+            if (e.target.value) {
+              shiftSelector.removeEventListener('change', handler);
+              resolve(e.target.value);
+            }
+          });
+        });
+        
+        shiftSelector.style.display = 'none';
+
         updateStatus('กำลังเปิดกล้อง...');
 
         // Take photo
@@ -230,10 +275,11 @@
               accuracy: position.coords.accuracy,
               timestamp: new Date().toISOString(),
               source: 'liff-gps-photo',
-              hasPhoto: !!photoDataUrl
+              hasPhoto: !!photoDataUrl,
+              shift: selectedShift
             })
           });
-          console.log('Location with photo info saved to API');
+          console.log('Location with photo info and shift saved to API');
         } catch (e) {
           console.warn('Failed to save to API:', e);
         }
