@@ -206,17 +206,21 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                                 timeout=10
                             )
                             
-                            if update_response.status_code == 200:
+                            print(f"   Update Response Status: {update_response.status_code}")
+                            print(f"   Update Response: {update_response.text}")
+                            
+                            # Accept both 200 (OK) and 201 (Created) as success
+                            if update_response.status_code in [200, 201]:
                                 print(f"✅ Time record updated successfully")
                                 # Clear today's check-in data after successful check-out
-                                registrations_collection.update_one(
-                                    {"lineUserId": line_user_id},
-                                    {"$unset": {"todayCheckin": ""}}
-                                )
+                                if registrations_collection is not None:
+                                    registrations_collection.update_one(
+                                        {"lineUserId": line_user_id},
+                                        {"$unset": {"todayCheckin": ""}}
+                                    )
                                 return record_id
                             else:
                                 print(f"⚠️ Update API returned status {update_response.status_code}")
-                                print(f"   Response: {update_response.text}")
                                 return None
                         else:
                             print(f"   ⚠️ No matching check-in record found for today")
