@@ -145,10 +145,14 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
             try:
                 # Get existing time record for this employee/date
                 get_url = f"http://10.10.110.7:3000/timerecord/gettimerecordemployee/{employee_code}/{year}/{month}"
+                print(f"   GET URL: {get_url}")
                 get_response = requests.get(get_url, timeout=10)
+                print(f"   GET Response Status: {get_response.status_code}")
                 
                 if get_response.status_code == 200:
                     existing_data = get_response.json()
+                    print(f"   GET Response Data: {existing_data}")
+
                     
                     # Find today's record
                     if existing_data and 'result' in existing_data and len(existing_data['result']) > 0:
@@ -213,7 +217,10 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                                 print(f"   Response: {update_response.text}")
                                 return False
                         else:
-                            print(f"   ⚠️ No start time found for today - creating new record with end time only")
+                            print(f"   ⚠️ No start time found for today")
+                            print(f"   Today's record: {today_record}")
+                            print(f"   Record ID: {record_id}")
+                            print(f"   Creating new record with end time only")
                             payload = {
                                 "year": year,
                                 "employeeId": employee_code,
@@ -259,7 +266,8 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                             ]
                         }
                 else:
-                    print(f"   ⚠️ Could not fetch existing record - creating new")
+                    print(f"   ⚠️ Could not fetch existing record - Status: {get_response.status_code}")
+                    print(f"   Response: {get_response.text}")
                     payload = {
                         "year": year,
                         "employeeId": employee_code,
@@ -282,7 +290,9 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
                         ]
                     }
             except Exception as e:
-                print(f"   ⚠️ Error fetching existing record: {e}")
+                print(f"   ❌ Exception fetching existing record: {type(e).__name__}")
+                print(f"   Error details: {str(e)}")
+                print(f"   Creating new record instead")
                 payload = {
                     "year": year,
                     "employeeId": employee_code,
