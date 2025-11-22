@@ -139,6 +139,10 @@ def register():
         
         result = collection.insert_one(registration_data)
         
+        # ส่ง Flex Message Card กลับไปหาผู้ใช้
+        if line_user_id and line_user_id.strip() and LINE_CHANNEL_ACCESS_TOKEN:
+            send_registration_card(line_user_id, registration_data)
+        
         return jsonify({
             'success': True,
             'message': 'ลงทะเบียนสำเร็จ',
@@ -337,6 +341,272 @@ def webhook():
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
+def send_registration_card(user_id, registration_data):
+    """ส่ง Flex Message Card ยืนยันการลงทะเบียนกลับไปหาผู้ใช้"""
+    
+    try:
+        print(f"📤 Sending registration card to user_id: {user_id}")
+        
+        # สร้าง Flex Message Card
+        full_name = f"{registration_data.get('prefix', '')} {registration_data.get('firstName', '')} {registration_data.get('lastName', '')}"
+        
+        # แปลงเวลา UTC เป็นเวลาไทย (UTC+7)
+        created_utc = registration_data.get('createdAt', datetime.now())
+        created_thai = created_utc + timedelta(hours=7)
+        created_date = created_thai.strftime('%d/%m/%Y %H:%M')
+        
+        flex_message = {
+            "type": "flex",
+            "altText": "✅ ลงทะเบียนสำเร็จ!",
+            "contents": {
+                "type": "bubble",
+                "size": "mega",
+                "header": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "✅ ลงทะเบียนสำเร็จ",
+                            "color": "#FFFFFF",
+                            "size": "xl",
+                            "weight": "bold",
+                            "align": "center"
+                        },
+                        {
+                            "type": "text",
+                            "text": "ยินดีต้อนรับเข้าสู่ระบบ",
+                            "color": "#FFFFFF",
+                            "size": "sm",
+                            "align": "center",
+                            "margin": "md"
+                        }
+                    ],
+                    "backgroundColor": "#06C755",
+                    "paddingAll": "20px"
+                },
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": "ข้อมูลการลงทะเบียน",
+                                    "size": "lg",
+                                    "weight": "bold",
+                                    "color": "#FF6B35"
+                                }
+                            ],
+                            "margin": "none",
+                            "spacing": "none"
+                        },
+                        {
+                            "type": "separator",
+                            "margin": "lg"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "box",
+                                    "layout": "baseline",
+                                    "contents": [
+                                        {
+                                            "type": "text",
+                                            "text": "ชื่อ-นามสกุล:",
+                                            "size": "sm",
+                                            "color": "#8C8C8C",
+                                            "flex": 0,
+                                            "weight": "bold"
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": full_name,
+                                            "size": "sm",
+                                            "color": "#111111",
+                                            "flex": 0,
+                                            "margin": "md",
+                                            "wrap": True
+                                        }
+                                    ],
+                                    "spacing": "sm",
+                                    "margin": "lg"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "baseline",
+                                    "contents": [
+                                        {
+                                            "type": "text",
+                                            "text": "หน่วยงาน:",
+                                            "size": "sm",
+                                            "color": "#8C8C8C",
+                                            "flex": 0,
+                                            "weight": "bold"
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": f"{registration_data.get('deptName', '')} ({registration_data.get('deptCode', '')})",
+                                            "size": "sm",
+                                            "color": "#111111",
+                                            "flex": 0,
+                                            "margin": "md",
+                                            "wrap": True
+                                        }
+                                    ],
+                                    "spacing": "sm",
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "baseline",
+                                    "contents": [
+                                        {
+                                            "type": "text",
+                                            "text": "รหัสพนักงาน:",
+                                            "size": "sm",
+                                            "color": "#8C8C8C",
+                                            "flex": 0,
+                                            "weight": "bold"
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": registration_data.get('empCode', ''),
+                                            "size": "sm",
+                                            "color": "#111111",
+                                            "flex": 0,
+                                            "margin": "md"
+                                        }
+                                    ],
+                                    "spacing": "sm",
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "baseline",
+                                    "contents": [
+                                        {
+                                            "type": "text",
+                                            "text": "เบอร์โทร:",
+                                            "size": "sm",
+                                            "color": "#8C8C8C",
+                                            "flex": 0,
+                                            "weight": "bold"
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": registration_data.get('mobile', ''),
+                                            "size": "sm",
+                                            "color": "#111111",
+                                            "flex": 0,
+                                            "margin": "md"
+                                        }
+                                    ],
+                                    "spacing": "sm",
+                                    "margin": "md"
+                                },
+                                {
+                                    "type": "box",
+                                    "layout": "baseline",
+                                    "contents": [
+                                        {
+                                            "type": "text",
+                                            "text": "LINE ID:",
+                                            "size": "sm",
+                                            "color": "#8C8C8C",
+                                            "flex": 0,
+                                            "weight": "bold"
+                                        },
+                                        {
+                                            "type": "text",
+                                            "text": registration_data.get('lineId', ''),
+                                            "size": "sm",
+                                            "color": "#111111",
+                                            "flex": 0,
+                                            "margin": "md"
+                                        }
+                                    ],
+                                    "spacing": "sm",
+                                    "margin": "md"
+                                }
+                            ]
+                        },
+                        {
+                            "type": "separator",
+                            "margin": "lg"
+                        },
+                        {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": [
+                                {
+                                    "type": "text",
+                                    "text": f"ลงทะเบียนเมื่อ: {created_date}",
+                                    "size": "xs",
+                                    "color": "#AAAAAA",
+                                    "align": "center"
+                                }
+                            ],
+                            "margin": "lg"
+                        }
+                    ],
+                    "spacing": "md",
+                    "paddingAll": "20px"
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        {
+                            "type": "text",
+                            "text": "บริษัทโอวาทเมท",
+                            "size": "xs",
+                            "color": "#AAAAAA",
+                            "align": "center",
+                            "weight": "bold"
+                        }
+                    ],
+                    "paddingAll": "10px"
+                }
+            }
+        }
+        
+        # ส่งข้อความผ่าน LINE Push Message API
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {LINE_CHANNEL_ACCESS_TOKEN}'
+        }
+        
+        payload = {
+            'to': user_id,
+            'messages': [flex_message]
+        }
+        
+        print(f"📤 Sending Flex Message to LINE API...")
+        
+        response = requests.post(
+            'https://api.line.me/v2/bot/message/push',
+            headers=headers,
+            json=payload
+        )
+        
+        print(f"📥 LINE API Response: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"❌ LINE API Error: {response.text}")
+        else:
+            print(f"✅ Registration card sent successfully!")
+        
+    except Exception as e:
+        print(f"❌ Send registration card error: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
 def send_personal_info(reply_token, user_id):
     """ส่งข้อมูลส่วนตัวกลับไปหาผู้ใช้"""
