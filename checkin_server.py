@@ -137,47 +137,193 @@ def create_time_record(employee_code, employee_name, dept_code, dept_name, check
         day = str(dt.day)
         current_time = f"{dt.hour:02d}.{dt.minute:02d}"
         
-        # Determine which field to populate based on check-in type
-        start_time = current_time if checkin_type == "in" else ""
-        end_time = current_time if checkin_type == "out" else ""
-        total_time = ""
-        
-        # If checking out, try to calculate totalTime
-        if checkin_type == "out" and start_time == "":
-            # We need to get the start time from existing record
-            # For now, we'll leave it empty and let the backend handle it
-            print(f"⚠️ Check-out detected but no start time available for calculation")
-        
-        # Prepare payload
-        payload = {
-            "year": year,
-            "employeeId": employee_code,
-            "employeeName": employee_name,
-            "month": month,
-            "employee_record": [
-                {
-                    "workplaceId": dept_code,
-                    "workplaceName": dept_name,
-                    "wGroup": "",
-                    "date": day,
-                    "shift": shift,
-                    "startTime": start_time,
-                    "endTime": end_time,
-                    "totalTime": total_time,
-                    "startOtTime": "",
-                    "endOtTime": "",
-                    "totalOtTime": ""
-                }
-            ]
-        }
-        
         checkin_type_text = "เข้างาน" if checkin_type == "in" else "ออกงาน"
+        
+        # If checking out, get existing record first
+        if checkin_type == "out":
+            print(f"🔍 Checking out - fetching existing record...")
+            try:
+                # Get existing time record for this employee/date
+                get_url = f"http://10.10.110.7:3000/timerecord/gettimerecordemployee/{employee_code}/{year}/{month}"
+                get_response = requests.get(get_url, timeout=10)
+                
+                if get_response.status_code == 200:
+                    existing_data = get_response.json()
+                    
+                    # Find today's record
+                    if existing_data and 'result' in existing_data and len(existing_data['result']) > 0:
+                        employee_records = existing_data['result'][0].get('employee_record', [])
+                        
+                        # Find record for current date
+                        today_record = None
+                        for record in employee_records:
+                            if record.get('date') == day:
+                                today_record = record
+                                break
+                        
+                        if today_record and today_record.get('startTime'):
+                            start_time = today_record.get('startTime')
+                            end_time = current_time
+                            
+                            # Calculate total time (endTime - startTime)
+                            try:
+                                start_h, start_m = map(int, start_time.split('.'))
+                                end_h, end_m = map(int, end_time.split('.'))
+                                
+                                total_minutes = (end_h * 60 + end_m) - (start_h * 60 + start_m)
+                                total_hours = total_minutes / 60
+                                total_time = f"{total_hours:.2f}"
+                                
+                                print(f"   ⏰ Calculated total time: {total_time} hours ({start_time} - {end_time})")
+                            except:
+                                total_time = ""
+                                print(f"   ⚠️ Could not calculate total time")
+                            
+                            # Update existing record with endTime and totalTime
+                            payload = {
+                                "year": year,
+                                "employeeId": employee_code,
+                                "employeeName": employee_name,
+                                "month": month,
+                                "employee_record": [
+                                    {
+                                        "workplaceId": dept_code,
+                                        "workplaceName": dept_name,
+                                        "wGroup": today_record.get('wGroup', ''),
+                                        "date": day,
+                                        "shift": shift or today_record.get('shift', ''),
+                                        "startTime": start_time,
+                                        "endTime": end_time,
+                                        "totalTime": total_time,
+                                        "startOtTime": today_record.get('startOtTime', ''),
+                                        "endOtTime": today_record.get('endOtTime', ''),
+                                        "totalOtTime": today_record.get('totalOtTime', '')
+                                    }
+                                ]
+                            }
+                        else:
+                            print(f"   ⚠️ No start time found for today - creating new record with end time only")
+                            payload = {
+                                "year": year,
+                                "employeeId": employee_code,
+                                "employeeName": employee_name,
+                                "month": month,
+                                "employee_record": [
+                                    {
+                                        "workplaceId": dept_code,
+                                        "workplaceName": dept_name,
+                                        "wGroup": "",
+                                        "date": day,
+                                        "shift": shift,
+                                        "startTime": "",
+                                        "endTime": current_time,
+                                        "totalTime": "",
+                                        "startOtTime": "",
+                                        "endOtTime": "",
+                                        "totalOtTime": ""
+                                    }
+                                ]
+                            }
+                    else:
+                        print(f"   ⚠️ No existing records found - creating new record")
+                        payload = {
+                            "year": year,
+                            "employeeId": employee_code,
+                            "employeeName": employee_name,
+                            "month": month,
+                            "employee_record": [
+                                {
+                                    "workplaceId": dept_code,
+                                    "workplaceName": dept_name,
+                                    "wGroup": "",
+                                    "date": day,
+                                    "shift": shift,
+                                    "startTime": "",
+                                    "endTime": current_time,
+                                    "totalTime": "",
+                                    "startOtTime": "",
+                                    "endOtTime": "",
+                                    "totalOtTime": ""
+                                }
+                            ]
+                        }
+                else:
+                    print(f"   ⚠️ Could not fetch existing record - creating new")
+                    payload = {
+                        "year": year,
+                        "employeeId": employee_code,
+                        "employeeName": employee_name,
+                        "month": month,
+                        "employee_record": [
+                            {
+                                "workplaceId": dept_code,
+                                "workplaceName": dept_name,
+                                "wGroup": "",
+                                "date": day,
+                                "shift": shift,
+                                "startTime": "",
+                                "endTime": current_time,
+                                "totalTime": "",
+                                "startOtTime": "",
+                                "endOtTime": "",
+                                "totalOtTime": ""
+                            }
+                        ]
+                    }
+            except Exception as e:
+                print(f"   ⚠️ Error fetching existing record: {e}")
+                payload = {
+                    "year": year,
+                    "employeeId": employee_code,
+                    "employeeName": employee_name,
+                    "month": month,
+                    "employee_record": [
+                        {
+                            "workplaceId": dept_code,
+                            "workplaceName": dept_name,
+                            "wGroup": "",
+                            "date": day,
+                            "shift": shift,
+                            "startTime": "",
+                            "endTime": current_time,
+                            "totalTime": "",
+                            "startOtTime": "",
+                            "endOtTime": "",
+                            "totalOtTime": ""
+                        }
+                    ]
+                }
+        else:
+            # Check-in: Create new record with startTime
+            payload = {
+                "year": year,
+                "employeeId": employee_code,
+                "employeeName": employee_name,
+                "month": month,
+                "employee_record": [
+                    {
+                        "workplaceId": dept_code,
+                        "workplaceName": dept_name,
+                        "wGroup": "",
+                        "date": day,
+                        "shift": shift,
+                        "startTime": current_time,
+                        "endTime": "",
+                        "totalTime": "",
+                        "startOtTime": "",
+                        "endOtTime": "",
+                        "totalOtTime": ""
+                    }
+                ]
+            }
+        
         print(f"📝 Creating time record for employee {employee_code}...")
         print(f"   Type: {checkin_type_text}")
         print(f"   API: http://10.10.110.7:3000/timerecord/createtimerecordemployee")
         print(f"   Date: {year}-{month}-{day}")
-        print(f"   Start Time: {start_time if start_time else 'N/A'}")
-        print(f"   End Time: {end_time if end_time else 'N/A'}")
+        print(f"   Start Time: {payload['employee_record'][0]['startTime'] or 'N/A'}")
+        print(f"   End Time: {payload['employee_record'][0]['endTime'] or 'N/A'}")
+        print(f"   Total Time: {payload['employee_record'][0]['totalTime'] or 'N/A'}")
         
         response = requests.post(
             "http://10.10.110.7:3000/timerecord/createtimerecordemployee",
